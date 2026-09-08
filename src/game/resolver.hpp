@@ -23,6 +23,7 @@
 #include "event/event_bus.hpp"
 #include "game/combat.hpp"
 #include "game/context.hpp"
+#include "game/counter.hpp"
 #include "game/decision.hpp"
 #include "game/distance.hpp"
 #include "game/state.hpp"
@@ -235,6 +236,13 @@ namespace tkw
             if (played_removed.is_some())
                 ctx.cards->discard(std::move(played_removed).unwrap());
 
+            // 无懈可击只抵消锦囊牌；基本牌（杀/闪/桃）不可无懈
+            const bool is_trick = def.type == card::CardType::Trick;
+            const auto nullified = [&]()
+            {
+                return is_trick && resolve_nullification(ctx, ai, player);
+            };
+
             switch (eff.kind)
             {
             case card::CardEffectKind::Damage:
@@ -253,6 +261,8 @@ namespace tkw
             {
                 for (const auto &t : targets)
                 {
+                    if (nullified())
+                        continue;
                     bool responded = false;
                     if (eff.response.is_some())
                         responded = request_response(ctx, ai, t, eff.response.unwrap());
@@ -263,15 +273,23 @@ namespace tkw
             }
             case card::CardEffectKind::Heal:
                 for (const auto &t : targets)
+                {
+                    if (nullified())
+                        continue;
                     apply_heal(ctx, t, eff.amount);
+                }
                 return GameResult<void>::Ok();
             case card::CardEffectKind::Draw:
+                if (nullified())
+                    return GameResult<void>::Ok();
                 apply_draw(ctx, player, eff.count);
                 return GameResult<void>::Ok();
             case card::CardEffectKind::DiscardTarget:
             {
                 for (const auto &t : targets)
                 {
+                    if (nullified())
+                        continue;
                     const auto picked = ai.pick_card_from_target(ctx, player, t);
                     card::Card removed;
                     if (!remove_card_from_zones(ctx, t, picked.instance_id, removed))
@@ -284,6 +302,8 @@ namespace tkw
             {
                 for (const auto &t : targets)
                 {
+                    if (nullified())
+                        continue;
                     const auto picked = ai.pick_card_from_target(ctx, player, t);
                     card::Card removed;
                     if (!remove_card_from_zones(ctx, t, picked.instance_id, removed))
@@ -294,6 +314,8 @@ namespace tkw
             }
             case card::CardEffectKind::Duel:
             {
+                if (nullified())
+                    return GameResult<void>::Ok();
                 // 目标先开始，轮流打出杀；先不出的受对方 1 点伤害。
                 std::string attacker = player;
                 std::string defender = targets.front();

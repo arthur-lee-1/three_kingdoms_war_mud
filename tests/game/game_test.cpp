@@ -83,11 +83,13 @@ namespace
     };
 
     /** 确定性决策源：respond=是否总是打出响应牌；save=是否有桃就救；
-     *  plays=出牌脚本（依次执行，耗尽即结束出牌）；弃牌=手牌前 count 张。 */
+     *  counter=有无懈就出；plays=出牌脚本（依次执行，耗尽即结束出牌）；
+     *  弃牌=手牌前 count 张。 */
     struct TestDecider : DecisionSource
     {
         bool respond = false;
         bool save = false;
+        bool counter = false;
         std::vector<PlayAction> plays;
         std::size_t play_cursor = 0;
 
@@ -99,6 +101,11 @@ namespace
         bool play_peach(GameContext &, const std::string &, const std::string &) override
         {
             return save;
+        }
+
+        bool play_counter(GameContext &, const std::string &) override
+        {
+            return counter;
         }
 
         Card pick_card_from_target(
@@ -673,4 +680,81 @@ TEST_CASE("game: dying and died events published")
     REQUIRE(r2.is_ok());
     CHECK(dying == 1);
     CHECK(died == 0);
+}
+
+// ── 无懈可击 ─────────────────────────────────────────────────────────
+
+TEST_CASE("game: wuxie cancels aoe effect on one target only")
+{
+    TestGame g("deck");
+    g.add_player("a", 0, 4);
+    auto *b = g.add_player("b", 1, 4);
+    auto *c = g.add_player("c", 2, 4);
+    g.give("a", "nanman", "n#0");
+    g.give("b", "wuxie", "w#0");
+
+    TestDecider decider;
+    decider.counter = true;
+    const auto played = g.cards.hand("a")[0];
+    auto r = resolve_play(g.ctx, decider, "a", played, {"b", "c"});
+    REQUIRE(r.is_ok());
+    CHECK(b->get_hp() == 4);   // b 被无懈抵消
+    CHECK(c->get_hp() == 3);   // c 无无懈 → 受伤
+    CHECK(g.cards.hand_size("b") == 0);  // 无懈已消耗
+}
+
+TEST_CASE("game: wuxie cancels guohe so target keeps cards")
+{
+    TestGame g("deck");
+    g.add_player("a", 0, 4);
+    auto *b = g.add_player("b", 1, 4);
+    g.give("a", "guohe", "g#0");
+    g.give("b", "sha", "s#1");
+    g.give("b", "wuxie", "w#0");
+
+    TestDecider decider;
+    decider.counter = true;
+    const auto played = g.cards.hand("a")[0];
+    auto r = resolve_play(g.ctx, decider, "a", played, {"b"});
+    REQUIRE(r.is_ok());
+    CHECK(g.cards.hand_size("b") == 1);  // 过拆被抵消，杀还在（无懈已打）
+}
+
+TEST_CASE("game: wuxie chain flips outcome (second wuxie counters first)")
+{
+    TestGame g("deck");
+    g.add_player("a", 0, 4);
+    auto *b = g.add_player("b", 1, 4);
+    g.add_player("c", 2, 4);
+    g.give("a", "guohe", "g#0");
+    g.give("b", "sha", "s#1");
+    g.give("b", "wuxie", "w#0");  // b 出无懈抵消过拆
+    g.give("c", "wuxie", "w#1");  // c 再出无懈抵消 b 的无懈 → 过拆生效
+    g.give("c", "tao", "t#0");
+
+    TestDecider decider;
+    decider.counter = true;
+    const auto played = g.cards.hand("a")[0];
+    auto r = resolve_play(g.ctx, decider, "a", played, {"b"});
+    REQUIRE(r.is_ok());
+    CHECK(g.cards.hand_size("b") == 0);  // b 的无懈与杀都被拆掉
+    CHECK(g.cards.hand_size("c") == 1);  // c 只剩桃
+}
+
+TEST_CASE("game: tao is a basic card and cannot be countered")
+{
+    TestGame g("deck");
+    auto *a = g.add_player("a", 0, 4);
+    g.add_player("b", 1, 4);
+    a->take_damage("b", 2, false);  // a: 2
+    g.give("a", "tao", "t#0");
+    g.give("a", "wuxie", "w#0");
+
+    TestDecider decider;
+    decider.counter = true;
+    const auto played = g.cards.hand("a")[0];  // 桃
+    auto r = resolve_play(g.ctx, decider, "a", played, {"a"});
+    REQUIRE(r.is_ok());
+    CHECK(a->get_hp() == 3);   // 桃生效（基本牌不可无懈）
+    CHECK(g.cards.hand_size("a") == 1);  // 无懈未被消耗
 }

@@ -76,6 +76,14 @@ namespace tkw
              */
             virtual bool play_peach(
                 GameContext &ctx, const std::string &saver, const std::string &dying) = 0;
+
+            /**
+             * @brief 无懈窗口：player 是否打出一张无懈可击抵消当前锦囊效果。
+             * @note 实现应只在「打算且能够打出」时返回 true（counter 会先检查
+             *       手牌有牌再询问，并负责消费）。
+             */
+            virtual bool play_counter(
+                GameContext &ctx, const std::string &player) = 0;
         };
     }
 }
