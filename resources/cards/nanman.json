@@ -1,0 +1,19 @@
+{
+    "id": "nanman",
+    "name": "南蛮入侵",
+    "type": "trick",
+    "subtype": "instant",
+    "set": "standard",
+    "copies": [
+        { "suit": "spade", "number": 7 },
+        { "suit": "spade", "number": 13 },
+        { "suit": "club", "number": 7 }
+    ],
+    "text": "出牌阶段，对所有其他角色使用。每名目标需打出一张「杀」，否则受到你造成的1点伤害。",
+    "effect": {
+        "kind": "aoe_damage",
+        "amount": 1,
+        "scope": "all_others",
+        "response": "sha"
+    }
+}

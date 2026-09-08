@@ -1,0 +1,19 @@
+{
+    "id": "wuzhong",
+    "name": "无中生有",
+    "type": "trick",
+    "subtype": "instant",
+    "set": "standard",
+    "copies": [
+        { "suit": "heart", "number": 7 },
+        { "suit": "heart", "number": 8 },
+        { "suit": "heart", "number": 9 },
+        { "suit": "heart", "number": 11 }
+    ],
+    "text": "出牌阶段，对自己使用，摸两张牌。",
+    "effect": {
+        "kind": "draw",
+        "count": 2,
+        "scope": "self"
+    }
+}

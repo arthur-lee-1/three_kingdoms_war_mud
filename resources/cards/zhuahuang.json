@@ -1,0 +1,15 @@
+{
+    "id": "zhuahuang",
+    "name": "爪黄飞电",
+    "type": "equipment",
+    "subtype": "horse",
+    "set": "standard",
+    "copies": [
+        { "suit": "heart", "number": 13 }
+    ],
+    "text": "坐骑·+1。锁定技，其他角色与你计算距离时+1。",
+    "equip": {
+        "slot": "horse",
+        "direction": "defensive"
+    }
+}

@@ -1,0 +1,18 @@
+{
+    "id": "guanshi",
+    "name": "贯石斧",
+    "type": "equipment",
+    "subtype": "weapon",
+    "set": "standard",
+    "copies": [
+        { "suit": "diamond", "number": 5 }
+    ],
+    "text": "武器·攻击范围3。当你使用「杀」被目标打出一张「闪」抵消时，你可以弃置两张牌，令此「杀」依然造成伤害。",
+    "equip": {
+        "slot": "weapon",
+        "range": 3
+    },
+    "effect": {
+        "kind": "discard_two_force_damage"
+    }
+}

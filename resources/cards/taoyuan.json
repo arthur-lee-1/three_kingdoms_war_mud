@@ -1,0 +1,16 @@
+{
+    "id": "taoyuan",
+    "name": "桃园结义",
+    "type": "trick",
+    "subtype": "instant",
+    "set": "standard",
+    "copies": [
+        { "suit": "heart", "number": 1 }
+    ],
+    "text": "出牌阶段，对所有角色使用。每名角色回复1点体力。",
+    "effect": {
+        "kind": "heal",
+        "amount": 1,
+        "scope": "all"
+    }
+}

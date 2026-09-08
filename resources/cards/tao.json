@@ -1,0 +1,23 @@
+{
+    "id": "tao",
+    "name": "桃",
+    "type": "basic",
+    "subtype": "heal",
+    "set": "standard",
+    "copies": [
+        { "suit": "heart", "number": 3 },
+        { "suit": "heart", "number": 4 },
+        { "suit": "heart", "number": 6 },
+        { "suit": "heart", "number": 7 },
+        { "suit": "heart", "number": 8 },
+        { "suit": "heart", "number": 9 },
+        { "suit": "heart", "number": 12 },
+        { "suit": "diamond", "number": 12 }
+    ],
+    "text": "出牌阶段，对自己使用，回复1点体力。当一名角色处于濒死状态时，可对其使用。",
+    "effect": {
+        "kind": "heal",
+        "amount": 1,
+        "scope": "self"
+    }
+}

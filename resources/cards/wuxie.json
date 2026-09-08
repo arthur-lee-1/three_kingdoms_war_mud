@@ -1,0 +1,17 @@
+{
+    "id": "wuxie",
+    "name": "无懈可击",
+    "type": "trick",
+    "subtype": "instant",
+    "set": "ex",
+    "copies": [
+        { "suit": "spade", "number": 11 },
+        { "suit": "club", "number": 12 },
+        { "suit": "club", "number": 13 },
+        { "suit": "diamond", "number": 12 }
+    ],
+    "text": "抵消一张锦囊牌对一名角色产生的效果。",
+    "effect": {
+        "kind": "counter_trick"
+    }
+}

@@ -1,0 +1,17 @@
+{
+    "id": "shandian",
+    "name": "闪电",
+    "type": "trick",
+    "subtype": "delayed",
+    "set": "ex",
+    "copies": [
+        { "suit": "spade", "number": 1 },
+        { "suit": "heart", "number": 12 }
+    ],
+    "text": "出牌阶段，对自己使用，置于判定区。判定阶段进行判定，结果为黑桃2~9，则对其造成3点雷电伤害；否则移至下家的判定区。",
+    "effect": {
+        "kind": "lightning",
+        "amount": 3,
+        "scope": "self"
+    }
+}

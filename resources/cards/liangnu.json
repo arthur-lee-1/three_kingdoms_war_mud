@@ -1,0 +1,19 @@
+{
+    "id": "liangnu",
+    "name": "诸葛连弩",
+    "type": "equipment",
+    "subtype": "weapon",
+    "set": "standard",
+    "copies": [
+        { "suit": "club", "number": 1 },
+        { "suit": "diamond", "number": 1 }
+    ],
+    "text": "武器·攻击范围1。锁定技，你使用「杀」无次数限制。",
+    "equip": {
+        "slot": "weapon",
+        "range": 1
+    },
+    "effect": {
+        "kind": "no_sha_limit"
+    }
+}

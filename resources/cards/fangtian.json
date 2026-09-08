@@ -1,0 +1,18 @@
+{
+    "id": "fangtian",
+    "name": "方天画戟",
+    "type": "equipment",
+    "subtype": "weapon",
+    "set": "standard",
+    "copies": [
+        { "suit": "diamond", "number": 12 }
+    ],
+    "text": "武器·攻击范围4。当你使用「杀」指定唯一目标后，若此牌是你的最后一张手牌，你可以额外指定至多两名其他角色为目标。",
+    "equip": {
+        "slot": "weapon",
+        "range": 4
+    },
+    "effect": {
+        "kind": "multi_target_sha"
+    }
+}

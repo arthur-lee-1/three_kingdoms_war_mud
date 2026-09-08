@@ -1,0 +1,28 @@
+{
+    "id": "shan",
+    "name": "闪",
+    "type": "basic",
+    "subtype": "dodge",
+    "set": "standard",
+    "copies": [
+        { "suit": "heart", "number": 2 },
+        { "suit": "heart", "number": 2 },
+        { "suit": "heart", "number": 13 },
+        { "suit": "diamond", "number": 2 },
+        { "suit": "diamond", "number": 2 },
+        { "suit": "diamond", "number": 3 },
+        { "suit": "diamond", "number": 4 },
+        { "suit": "diamond", "number": 5 },
+        { "suit": "diamond", "number": 6 },
+        { "suit": "diamond", "number": 7 },
+        { "suit": "diamond", "number": 8 },
+        { "suit": "diamond", "number": 9 },
+        { "suit": "diamond", "number": 10 },
+        { "suit": "diamond", "number": 11 },
+        { "suit": "diamond", "number": 11 }
+    ],
+    "text": "当你成为「杀」或「万箭齐发」的目标时，打出此牌以抵消其效果。",
+    "effect": {
+        "kind": "jink"
+    }
+}

@@ -1,0 +1,18 @@
+{
+    "id": "hanbing",
+    "name": "寒冰剑",
+    "type": "equipment",
+    "subtype": "weapon",
+    "set": "ex",
+    "copies": [
+        { "suit": "spade", "number": 2 }
+    ],
+    "text": "武器·攻击范围2。当你使用「杀」对目标造成伤害时，你可以防止此伤害，改为弃置其两张牌。",
+    "equip": {
+        "slot": "weapon",
+        "range": 2
+    },
+    "effect": {
+        "kind": "damage_as_discard"
+    }
+}

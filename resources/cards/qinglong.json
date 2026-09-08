@@ -1,0 +1,18 @@
+{
+    "id": "qinglong",
+    "name": "青龙偃月刀",
+    "type": "equipment",
+    "subtype": "weapon",
+    "set": "standard",
+    "copies": [
+        { "suit": "spade", "number": 5 }
+    ],
+    "text": "武器·攻击范围3。当你使用「杀」被目标打出一张「闪」抵消时，你可以对同一目标再使用一张「杀」。",
+    "equip": {
+        "slot": "weapon",
+        "range": 3
+    },
+    "effect": {
+        "kind": "extra_sha_after_jink"
+    }
+}

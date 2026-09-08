@@ -1,0 +1,15 @@
+{
+    "id": "dawan",
+    "name": "大宛",
+    "type": "equipment",
+    "subtype": "horse",
+    "set": "standard",
+    "copies": [
+        { "suit": "spade", "number": 13 }
+    ],
+    "text": "坐骑·-1。锁定技，你与其他角色的距离-1。",
+    "equip": {
+        "slot": "horse",
+        "direction": "offensive"
+    }
+}

@@ -1,0 +1,17 @@
+{
+    "id": "renwang",
+    "name": "仁王盾",
+    "type": "equipment",
+    "subtype": "armor",
+    "set": "ex",
+    "copies": [
+        { "suit": "club", "number": 2 }
+    ],
+    "text": "防具。锁定技，黑色的「杀」对你无效。",
+    "equip": {
+        "slot": "armor"
+    },
+    "effect": {
+        "kind": "black_sha_immune"
+    }
+}

@@ -1,0 +1,16 @@
+{
+    "id": "jiedao",
+    "name": "借刀杀人",
+    "type": "trick",
+    "subtype": "instant",
+    "set": "standard",
+    "copies": [
+        { "suit": "club", "number": 12 },
+        { "suit": "club", "number": 13 }
+    ],
+    "text": "出牌阶段，对装备区有武器牌的一名其他角色A使用，选择攻击范围内的一名角色B（可为A）。A需对B使用一张「杀」，否则你获得A装备区里的武器牌。",
+    "effect": {
+        "kind": "borrowed_sword",
+        "scope": "one_other"
+    }
+}

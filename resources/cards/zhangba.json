@@ -1,0 +1,18 @@
+{
+    "id": "zhangba",
+    "name": "丈八蛇矛",
+    "type": "equipment",
+    "subtype": "weapon",
+    "set": "standard",
+    "copies": [
+        { "suit": "spade", "number": 12 }
+    ],
+    "text": "武器·攻击范围3。你可以将两张手牌当一张「杀」使用或打出。",
+    "equip": {
+        "slot": "weapon",
+        "range": 3
+    },
+    "effect": {
+        "kind": "two_cards_as_sha"
+    }
+}

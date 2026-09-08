@@ -1,0 +1,18 @@
+{
+    "id": "bagua",
+    "name": "八卦阵",
+    "type": "equipment",
+    "subtype": "armor",
+    "set": "standard",
+    "copies": [
+        { "suit": "spade", "number": 2 },
+        { "suit": "club", "number": 2 }
+    ],
+    "text": "防具。当你需要使用或打出「闪」时，可进行判定，结果为红色，视为你打出或使用了一张「闪」。",
+    "equip": {
+        "slot": "armor"
+    },
+    "effect": {
+        "kind": "judgement_jink"
+    }
+}

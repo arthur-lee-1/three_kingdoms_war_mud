@@ -1,0 +1,21 @@
+{
+    "id": "shunshou",
+    "name": "顺手牵羊",
+    "type": "trick",
+    "subtype": "instant",
+    "set": "standard",
+    "copies": [
+        { "suit": "spade", "number": 3 },
+        { "suit": "spade", "number": 4 },
+        { "suit": "spade", "number": 11 },
+        { "suit": "diamond", "number": 3 },
+        { "suit": "diamond", "number": 4 }
+    ],
+    "text": "出牌阶段，对距离为1的一名其他角色使用，获得其区域内的一张牌。",
+    "effect": {
+        "kind": "steal",
+        "count": 1,
+        "scope": "one_other",
+        "range": 1
+    }
+}

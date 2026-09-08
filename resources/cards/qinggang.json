@@ -1,0 +1,18 @@
+{
+    "id": "qinggang",
+    "name": "青釭剑",
+    "type": "equipment",
+    "subtype": "weapon",
+    "set": "standard",
+    "copies": [
+        { "suit": "spade", "number": 6 }
+    ],
+    "text": "武器·攻击范围2。锁定技，你使用「杀」对目标造成伤害时，无视其防具。",
+    "equip": {
+        "slot": "weapon",
+        "range": 2
+    },
+    "effect": {
+        "kind": "ignore_armor"
+    }
+}

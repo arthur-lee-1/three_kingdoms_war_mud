@@ -1,0 +1,21 @@
+{
+    "id": "guohe",
+    "name": "过河拆桥",
+    "type": "trick",
+    "subtype": "instant",
+    "set": "standard",
+    "copies": [
+        { "suit": "spade", "number": 3 },
+        { "suit": "spade", "number": 4 },
+        { "suit": "spade", "number": 12 },
+        { "suit": "club", "number": 3 },
+        { "suit": "club", "number": 4 },
+        { "suit": "heart", "number": 12 }
+    ],
+    "text": "出牌阶段，对区域内有牌的一名其他角色使用，弃置其区域内的一张牌。",
+    "effect": {
+        "kind": "discard_target",
+        "count": 1,
+        "scope": "one_other"
+    }
+}

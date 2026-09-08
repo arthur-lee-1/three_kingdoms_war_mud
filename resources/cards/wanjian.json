@@ -1,0 +1,17 @@
+{
+    "id": "wanjian",
+    "name": "万箭齐发",
+    "type": "trick",
+    "subtype": "instant",
+    "set": "standard",
+    "copies": [
+        { "suit": "heart", "number": 1 }
+    ],
+    "text": "出牌阶段，对所有其他角色使用。每名目标需打出一张「闪」，否则受到你造成的1点伤害。",
+    "effect": {
+        "kind": "aoe_damage",
+        "amount": 1,
+        "scope": "all_others",
+        "response": "shan"
+    }
+}

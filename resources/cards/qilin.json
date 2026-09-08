@@ -1,0 +1,18 @@
+{
+    "id": "qilin",
+    "name": "麒麟弓",
+    "type": "equipment",
+    "subtype": "weapon",
+    "set": "standard",
+    "copies": [
+        { "suit": "heart", "number": 5 }
+    ],
+    "text": "武器·攻击范围5。当你使用「杀」对目标造成伤害时，你可以弃置其装备区里的一张坐骑牌。",
+    "equip": {
+        "slot": "weapon",
+        "range": 5
+    },
+    "effect": {
+        "kind": "discard_horse_on_damage"
+    }
+}

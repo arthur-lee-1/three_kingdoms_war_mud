@@ -1,0 +1,17 @@
+{
+    "id": "juedou",
+    "name": "决斗",
+    "type": "trick",
+    "subtype": "instant",
+    "set": "standard",
+    "copies": [
+        { "suit": "spade", "number": 1 },
+        { "suit": "club", "number": 1 },
+        { "suit": "diamond", "number": 1 }
+    ],
+    "text": "出牌阶段，对一名其他角色使用。由目标开始，双方轮流打出「杀」，先不出的角色受到对方造成的1点伤害。",
+    "effect": {
+        "kind": "duel",
+        "scope": "one_other"
+    }
+}

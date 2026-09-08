@@ -1,0 +1,16 @@
+{
+    "id": "wugu",
+    "name": "五谷丰登",
+    "type": "trick",
+    "subtype": "instant",
+    "set": "standard",
+    "copies": [
+        { "suit": "heart", "number": 3 },
+        { "suit": "heart", "number": 4 }
+    ],
+    "text": "出牌阶段，对所有角色使用。亮出等同于角色数的牌，每名角色依次选择并获得一张，其余置入弃牌堆。",
+    "effect": {
+        "kind": "reveal_pick",
+        "scope": "all"
+    }
+}
