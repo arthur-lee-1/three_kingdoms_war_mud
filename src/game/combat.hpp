@@ -99,12 +99,7 @@ namespace tkw
             }
 
             // 座位序，从濒死角色开始
-            std::vector<std::string> order;
-            for (const auto &ent : *ctx.entities)
-                order.push_back(ent->get_id());
-            const auto it = std::find(order.begin(), order.end(), dying);
-            if (it != order.end())
-                std::rotate(order.begin(), it, order.end());
+            const auto order = ctx.entities->order_from(dying);
 
             int rounds = 0;
             while (true)

@@ -74,7 +74,7 @@ TEST_CASE("manager: remove is idempotent and keeps other pointers stable")
     (void)pa;
 }
 
-TEST_CASE("manager: iteration follows creation order (seat order)")
+TEST_CASE("manager: iteration follows creation order (not seat)")
 {
     EventBus bus;
     EntityManager mgr(bus);
@@ -88,4 +88,24 @@ TEST_CASE("manager: iteration follows creation order (seat order)")
     for (auto &up : mgr)
         seats.push_back(up->get_seat());
     CHECK(seats == std::vector<int>{0, 1, 2, 3});
+}
+
+TEST_CASE("manager: ordered_ids/next/order_from follow seat, not creation order")
+{
+    EventBus bus;
+    EntityManager mgr(bus);
+    // 创建序：c(2), a(0), d(3), b(1) —— 与座位号不一致
+    REQUIRE(mgr.create("c", 2, hp4()).is_ok());
+    REQUIRE(mgr.create("a", 0, hp4()).is_ok());
+    REQUIRE(mgr.create("d", 3, hp4()).is_ok());
+    REQUIRE(mgr.create("b", 1, hp4()).is_ok());
+
+    CHECK(mgr.ordered_ids() == std::vector<std::string>({"a", "b", "c", "d"}));
+    CHECK(mgr.next("a") == "b");
+    CHECK(mgr.next("d") == "a");  // 环绕
+    CHECK(mgr.order_from("c") == std::vector<std::string>({"c", "d", "a", "b"}));
+
+    mgr.remove("b");
+    CHECK(mgr.ordered_ids() == std::vector<std::string>({"a", "c", "d"}));
+    CHECK(mgr.next("a") == "c");  // 跳过已移除
 }

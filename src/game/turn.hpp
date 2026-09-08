@@ -64,19 +64,10 @@ namespace tkw
 
         // ── 判定 ────────────────────────────────────────────────────────
 
-        /** @brief 下家（按实体迭代序环绕；死亡者已被移除，天然跳过）。 */
+        /** @brief 下家（按座位序环绕；死亡者已被移除，天然跳过）。 */
         inline std::string next_player(const GameContext &ctx, const std::string &player)
         {
-            std::vector<std::string> ids;
-            for (const auto &ent : *ctx.entities)
-                ids.push_back(ent->get_id());
-            if (ids.empty())
-                return player;
-            const auto it = std::find(ids.begin(), ids.end(), player);
-            if (it == ids.end())
-                return ids.front();
-            const auto next = std::next(it);
-            return next == ids.end() ? ids.front() : *next;
+            return ctx.entities->next(player);
         }
 
         /**

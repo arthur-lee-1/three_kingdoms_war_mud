@@ -69,13 +69,7 @@ namespace tkw
         inline std::vector<std::string> seat_order_from(
             const GameContext &ctx, const std::string &start)
         {
-            std::vector<std::string> order;
-            for (const auto &ent : *ctx.entities)
-                order.push_back(ent->get_id());
-            const auto it = std::find(order.begin(), order.end(), start);
-            if (it != order.end())
-                std::rotate(order.begin(), it, order.end());
-            return order;
+            return ctx.entities->order_from(start);
         }
 
         /** @brief 询问某玩家是否打出无懈（有牌且决定出则消费）。 */
