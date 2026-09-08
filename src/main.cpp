@@ -8,13 +8,17 @@
 #include <iostream>
 #include <memory>
 #include <string>
+#include <vector>
 
 #include "card/catalog.hpp"
 #include "config/error.hpp"
 #include "config/resource.hpp"
+#include "entity/event.hpp"
 #include "entity/hp.hpp"
+#include "event/handler.hpp"
 #include "game/ai/simple.hpp"
 #include "game/audit.hpp"
+#include "game/card_event.hpp"
 #include "game/loop.hpp"
 #include "game/table.hpp"
 #include "util/rng.hpp"
@@ -27,6 +31,7 @@ namespace
         int players = 4;
         int hand = 4;
         std::uint32_t seed = 42;
+        bool verbose = false;
     };
 
     void print_usage()
@@ -36,6 +41,7 @@ namespace
                   << "  --players <n>   玩家数（>= 2，默认 4）\n"
                   << "  --hand <n>      初始手牌数（默认 4）\n"
                   << "  --seed <n>      随机种子（默认 42）\n"
+                  << "  -v, --verbose   打印卡牌/死亡事件日志\n"
                   << "  -h, --help      显示本帮助\n";
     }
 
@@ -63,6 +69,8 @@ namespace
                 opt.hand = std::stoi(value("--hand"));
             else if (arg == "--seed")
                 opt.seed = static_cast<std::uint32_t>(std::stoul(value("--seed")));
+            else if (arg == "-v" || arg == "--verbose")
+                opt.verbose = true;
             else if (arg == "-h" || arg == "--help")
             {
                 print_usage();
@@ -127,6 +135,28 @@ int main(int argc, char **argv)
         }
 
         auto ctx = game.context();
+
+        // 事件日志（--verbose）：直接订阅本局总线，演示卡牌域事件
+        std::vector<tkw::EventBus::Handle> log_handles;
+        if (opt.verbose)
+        {
+            log_handles.push_back(game.bus.subscribe(tkw::Handler<tkw::CardPlayedEvent>(
+                [](tkw::HandlerContext<tkw::CardPlayedEvent> &c)
+                { std::cout << "[打出] " << c.event.user << " " << c.event.def_id << "\n"; })));
+            log_handles.push_back(
+                game.bus.subscribe(tkw::Handler<tkw::CardDiscardedEvent>(
+                    [](tkw::HandlerContext<tkw::CardDiscardedEvent> &c) {
+                        std::cout << "[弃置] " << c.event.entity << " " << c.event.def_id
+                                  << "\n";
+                    })));
+            log_handles.push_back(game.bus.subscribe(tkw::Handler<tkw::CardDrawnEvent>(
+                [](tkw::HandlerContext<tkw::CardDrawnEvent> &c)
+                { std::cout << "[摸牌] " << c.event.entity << " " << c.event.def_id << "\n"; })));
+            log_handles.push_back(game.bus.subscribe(tkw::Handler<tkw::EntityDiedEvent>(
+                [](tkw::HandlerContext<tkw::EntityDiedEvent> &c)
+                { std::cout << "[阵亡] " << c.event.entity_id << "\n"; })));
+        }
+
         tkw::game::SimpleAI ai;
         auto outcome = tkw::game::play_game(ctx, ai, "P0", opt.hand);
         if (outcome.is_err())

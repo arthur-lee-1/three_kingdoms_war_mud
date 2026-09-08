@@ -5,6 +5,8 @@
  * @note 不持有所有权：GameContext 只聚合指针，生命周期由调用方保证
  *       （bus/entities/cards/catalog 均须比本对象存活更久）。跨域引用
  *       沿用 id 字符串约定，本结构不依赖 entity 类的具体形态。
+ * @note 推荐经 Game::context() 构造：它保证 bus/entities/cards/catalog
+ *       非空（rng 可空 = 不洗牌），并绑定同一局的生命周期。
  */
 
 #ifndef INCLUDE_TKW_GAME_CONTEXT_HPP
