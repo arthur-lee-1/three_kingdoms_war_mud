@@ -15,6 +15,12 @@ target_compile_definitions(tkw_tests PRIVATE TKW_BUILD_TESTS)
 include(${doctest_SOURCE_DIR}/scripts/cmake/doctest.cmake)
 doctest_discover_tests(tkw_tests)
 
+add_executable(config_tests test_main.cpp config/config_test.cpp)
+
+target_link_libraries(config_tests PRIVATE tkw_config doctest)
+
+doctest_discover_tests(config_tests)
+
 add_executable(io_tests test_main.cpp io/file_test.cpp)
 
 target_link_libraries(io_tests PRIVATE tkw_io doctest)
