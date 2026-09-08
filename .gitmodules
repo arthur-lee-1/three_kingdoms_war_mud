@@ -1,0 +1,12 @@
+[submodule "thirdparty/pjh_result"]
+	path = thirdparty/pjh_result
+	url = https://github.com/pjh456/pjh_result
+[submodule "thirdparty/pjh_json"]
+	path = thirdparty/pjh_json
+	url = https://github.com/pjh456/pjh_json
+[submodule "thirdparty/pjh_cli"]
+	path = thirdparty/pjh_cli
+	url = https://github.com/pjh456/pjh_cli
+[submodule "thirdparty/pjh_platform"]
+	path = thirdparty/pjh_platform
+	url = https://github.com/pjh456/pjh_platform
