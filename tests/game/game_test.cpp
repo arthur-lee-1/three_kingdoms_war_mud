@@ -20,6 +20,7 @@
 #include "game/resolver.hpp"
 #include "game/table.hpp"
 #include "game/turn.hpp"
+#include "game/audit.hpp"
 #include "util/rng.hpp"
 
 namespace
@@ -808,6 +809,13 @@ TEST_CASE("game: same seed yields identical deal, different seed differs")
             differs = true;
     }
     CHECK(differs);  // 不同 seed 必须洗出不同结果
+}
+
+TEST_CASE("game: unsupported deck cards are reported")
+{
+    TestGame g("deck");
+    CHECK(unsupported_cards(g.catalog) ==
+          std::vector<std::string>({"lesi", "shandian", "jiedao", "wugu"}));
 }
 
 TEST_CASE("game: play_game ends when one player kills the other")

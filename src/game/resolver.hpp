@@ -48,6 +48,39 @@ namespace tkw
         template <typename T>
         using GameResult = Result<T, EffectError>;
 
+        /** @brief 引擎已实现的主动结算效果类别（与 resolve_play 分派保持一致）。 */
+        inline bool is_settleable_kind(card::CardEffectKind k)
+        {
+            switch (k)
+            {
+            case card::CardEffectKind::Damage:
+            case card::CardEffectKind::AoeDamage:
+            case card::CardEffectKind::Heal:
+            case card::CardEffectKind::Draw:
+            case card::CardEffectKind::DiscardTarget:
+            case card::CardEffectKind::Steal:
+            case card::CardEffectKind::Duel:
+                return true;
+            default:
+                return false;
+            }
+        }
+
+        /** @brief 本应可主动打出、但引擎尚未实现结算的效果类别（牌堆审计用）。 */
+        inline bool is_unimplemented_active_kind(card::CardEffectKind k)
+        {
+            switch (k)
+            {
+            case card::CardEffectKind::RevealPick:
+            case card::CardEffectKind::BorrowedSword:
+            case card::CardEffectKind::DelayedPlaySkip:
+            case card::CardEffectKind::Lightning:
+                return true;
+            default:
+                return false;
+            }
+        }
+
         // ── 目标选择 ────────────────────────────────────────────────────
 
         /** @brief 按 effect.scope 返回该牌在当前局面下的合法目标集合（含距离过滤）。 */
@@ -138,19 +171,8 @@ namespace tkw
             }
 
             // 未实现的效果：不消耗打出的牌
-            switch (eff.kind)
-            {
-            case card::CardEffectKind::Damage:
-            case card::CardEffectKind::AoeDamage:
-            case card::CardEffectKind::Heal:
-            case card::CardEffectKind::Draw:
-            case card::CardEffectKind::DiscardTarget:
-            case card::CardEffectKind::Steal:
-            case card::CardEffectKind::Duel:
-                break;
-            default:
+            if (!is_settleable_kind(eff.kind))
                 return GameResult<void>::Err(EffectError::UnsupportedKind);
-            }
 
             // 打出的牌弃置（若在手牌中）
             auto played_removed = ctx.cards->remove_from_hand(player, played.instance_id);

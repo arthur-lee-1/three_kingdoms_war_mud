@@ -12,6 +12,7 @@
     ],
     "text": "抵消一张锦囊牌对一名角色产生的效果。",
     "effect": {
-        "kind": "counter_trick"
+        "kind": "counter_trick",
+        "counter": true
     }
 }

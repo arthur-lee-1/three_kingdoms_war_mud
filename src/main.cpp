@@ -14,6 +14,7 @@
 #include "config/resource.hpp"
 #include "entity/hp.hpp"
 #include "game/ai/simple.hpp"
+#include "game/audit.hpp"
 #include "game/loop.hpp"
 #include "game/table.hpp"
 #include "util/rng.hpp"
@@ -103,6 +104,16 @@ int main(int argc, char **argv)
         tkw::game::Game game(
             std::move(catalog).unwrap(),
             std::make_unique<tkw::SeededRng>(opt.seed));
+
+        const auto unsupported = tkw::game::unsupported_cards(game.catalog);
+        if (!unsupported.empty())
+        {
+            std::cerr << "警告: 牌堆含 " << unsupported.size()
+                      << " 张引擎未实现的卡:";
+            for (const auto &id : unsupported)
+                std::cerr << ' ' << id;
+            std::cerr << "\n";
+        }
 
         for (int i = 0; i < opt.players; ++i)
         {

@@ -145,6 +145,57 @@ TEST_CASE("card: opt default must not swallow type mismatch")
     CHECK(r.unwrap_err() == ConfigError{ConfigErrorKind::TypeMismatch, "a.effect.amount"});
 }
 
+TEST_CASE("card: effect rescue/counter flags parse with false default")
+{
+    auto r = parse_card_def(
+        doc(R"({"id": "tao", "name": "桃", "type": "basic", "subtype": "heal",
+                 "copies": [ {"suit": "heart", "number": 3} ],
+                 "effect": {"kind": "heal", "amount": 1, "scope": "self", "rescue": true}})").root(),
+        "tao");
+    REQUIRE(r.is_ok());
+    CHECK(r.unwrap().effect.unwrap().rescue);
+    CHECK_FALSE(r.unwrap().effect.unwrap().counter);
+
+    auto c = parse_card_def(
+        doc(R"({"id": "wuxie", "name": "无懈可击", "type": "trick", "subtype": "instant",
+                 "copies": [ {"suit": "spade", "number": 11} ],
+                 "effect": {"kind": "counter_trick", "counter": true}})").root(),
+        "wuxie");
+    REQUIRE(c.is_ok());
+    CHECK(c.unwrap().effect.unwrap().counter);
+    CHECK_FALSE(c.unwrap().effect.unwrap().rescue);
+}
+
+TEST_CASE("card: effect field invariants and subtype are enforced")
+{
+    auto dmg = parse_card_def(
+        doc(R"({"id": "a", "name": "a", "type": "basic", "copies": [],
+                 "effect": {"kind": "damage"}})").root(), "a");
+    REQUIRE(dmg.is_err());
+    CHECK(dmg.unwrap_err() ==
+          ConfigError{ConfigErrorKind::InvalidValue, "a.effect.amount"});
+
+    auto draw = parse_card_def(
+        doc(R"({"id": "a", "name": "a", "type": "trick", "copies": [],
+                 "effect": {"kind": "draw"}})").root(), "a");
+    REQUIRE(draw.is_err());
+    CHECK(draw.unwrap_err() ==
+          ConfigError{ConfigErrorKind::InvalidValue, "a.effect.count"});
+
+    auto steal = parse_card_def(
+        doc(R"({"id": "a", "name": "a", "type": "trick", "copies": [],
+                 "effect": {"kind": "steal", "count": 1}})").root(), "a");
+    REQUIRE(steal.is_err());
+    CHECK(steal.unwrap_err() ==
+          ConfigError{ConfigErrorKind::InvalidValue, "a.effect.range"});
+
+    auto sub = parse_card_def(
+        doc(R"({"id": "a", "name": "a", "type": "basic", "subtype": "nope",
+                 "copies": []})").root(), "a");
+    REQUIRE(sub.is_err());
+    CHECK(sub.unwrap_err() == ConfigError{ConfigErrorKind::InvalidValue, "a.subtype"});
+}
+
 TEST_CASE("card: catalog loads deck + card files")
 {
     const auto dir = temp_dir("tkw_card_catalog");

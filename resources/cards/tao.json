@@ -18,6 +18,7 @@
     "effect": {
         "kind": "heal",
         "amount": 1,
-        "scope": "self"
+        "scope": "self",
+        "rescue": true
     }
 }

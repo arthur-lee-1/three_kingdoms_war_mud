@@ -31,10 +31,10 @@ namespace tkw
 {
     namespace game
     {
-        /** @brief 该定义是否为「桃」（只有桃能救濒死）。 */
-        inline bool is_peach_def(const card::CardDef &def)
+        /** @brief 该定义是否可作濒死救场牌（数据标记 effect.rescue，不再认 id）。 */
+        inline bool is_rescue_def(const card::CardDef &def)
         {
-            return def.id == "tao";
+            return def.effect.is_some() && def.effect.unwrap().rescue;
         }
 
         /** @brief 玩家手牌中是否有桃。 */
@@ -43,7 +43,7 @@ namespace tkw
             for (const auto &c : ctx.cards->hand(player))
             {
                 const auto def = ctx.catalog->find(c.def_id);
-                if (def.is_some() && is_peach_def(*def.unwrap()))
+                if (def.is_some() && is_rescue_def(*def.unwrap()))
                     return true;
             }
             return false;
@@ -55,7 +55,7 @@ namespace tkw
             for (const auto &c : ctx.cards->hand(player))
             {
                 const auto def = ctx.catalog->find(c.def_id);
-                if (def.is_some() && is_peach_def(*def.unwrap()))
+                if (def.is_some() && is_rescue_def(*def.unwrap()))
                 {
                     auto removed = ctx.cards->remove_from_hand(player, c.instance_id);
                     if (removed.is_some())

@@ -27,10 +27,10 @@ namespace tkw
 {
     namespace game
     {
-        /** @brief 该定义是否为无懈可击。 */
+        /** @brief 该定义是否可作无懈响应牌（数据标记 effect.counter，不再认 id）。 */
         inline bool is_counter_def(const card::CardDef &def)
         {
-            return def.id == "wuxie";
+            return def.effect.is_some() && def.effect.unwrap().counter;
         }
 
         inline bool has_counter_card(const GameContext &ctx, const std::string &player)

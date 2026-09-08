@@ -137,6 +137,8 @@ namespace tkw
             Option<Scope> scope = Option<Scope>::None();
             Option<ResponseKind> response = Option<ResponseKind>::None();
             int range = 0;
+            bool rescue = false;  /**< 可作濒死救场牌（桃） */
+            bool counter = false; /**< 可作无懈响应牌（无懈可击） */
 
             bool operator==(const CardEffect &) const = default;
         };

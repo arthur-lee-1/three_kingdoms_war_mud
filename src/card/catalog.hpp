@@ -49,6 +49,14 @@ namespace tkw
                 return cfg::ConfigResult<T>::Err(cfg::ConfigError{kind, std::move(detail)});
             }
 
+            /** @brief subtype 封闭集合（空串 = 未分类，合法）。 */
+            bool is_valid_subtype(std::string_view s)
+            {
+                return s.empty() || s == "attack" || s == "dodge" || s == "heal" ||
+                       s == "instant" || s == "delayed" || s == "weapon" ||
+                       s == "armor" || s == "horse";
+            }
+
             /** 字符串 → 封闭枚举：未知值报 InvalidValue（detail = 字段路径）。 */
             template <typename E>
             cfg::ConfigResult<E> enum_value(
@@ -205,6 +213,49 @@ namespace tkw
                     return cfg::ConfigResult<CardEffect>::Err(range.unwrap_err());
                 eff.range = static_cast<int>(range.unwrap());
 
+                auto rescue = cfg::opt_bool(obj, "rescue", false, path);
+                if (rescue.is_err())
+                    return cfg::ConfigResult<CardEffect>::Err(rescue.unwrap_err());
+                eff.rescue = rescue.unwrap();
+
+                auto counter = cfg::opt_bool(obj, "counter", false, path);
+                if (counter.is_err())
+                    return cfg::ConfigResult<CardEffect>::Err(counter.unwrap_err());
+                eff.counter = counter.unwrap();
+
+                // kind 所需的字段不变量：缺失/为 0 一律加载失败（不静默按 0 结算）
+                switch (eff.kind)
+                {
+                case CardEffectKind::Damage:
+                case CardEffectKind::AoeDamage:
+                case CardEffectKind::Heal:
+                case CardEffectKind::Duel:
+                    if (eff.amount <= 0)
+                        return fail<CardEffect>(
+                            cfg::ConfigErrorKind::InvalidValue,
+                            key_path(path, "amount"));
+                    break;
+                case CardEffectKind::Draw:
+                case CardEffectKind::DiscardTarget:
+                    if (eff.count <= 0)
+                        return fail<CardEffect>(
+                            cfg::ConfigErrorKind::InvalidValue,
+                            key_path(path, "count"));
+                    break;
+                case CardEffectKind::Steal:
+                    if (eff.count <= 0)
+                        return fail<CardEffect>(
+                            cfg::ConfigErrorKind::InvalidValue,
+                            key_path(path, "count"));
+                    if (eff.range <= 0)
+                        return fail<CardEffect>(
+                            cfg::ConfigErrorKind::InvalidValue,
+                            key_path(path, "range"));
+                    break;
+                default:
+                    break;
+                }
+
                 return cfg::ConfigResult<CardEffect>::Ok(std::move(eff));
             }
 
@@ -269,6 +320,10 @@ namespace tkw
                 if (subtype.is_err())
                     return cfg::ConfigResult<CardDef>::Err(subtype.unwrap_err());
                 def.subtype = subtype.unwrap();
+                if (!is_valid_subtype(def.subtype))
+                    return fail<CardDef>(
+                        cfg::ConfigErrorKind::InvalidValue,
+                        key_path(path, "subtype"));
 
                 auto set = cfg::opt_string(root, "set", "standard", path);
                 if (set.is_err())
