@@ -29,9 +29,9 @@ namespace tkw
     {
         using namespace tkw::game;
         using tkw::Option;
+        using tkw::card::Ability;
         using tkw::card::Card;
         using tkw::card::CardDefCatalog;
-        using tkw::card::CardEffectKind;
         using tkw::card::ResponseKind;
         using tkw::entity::Entity;
         using tkw::entity::Hp;
@@ -87,7 +87,7 @@ namespace tkw
             bool respond = false;
             bool save = false;
             bool counter = false;
-            std::vector<CardEffectKind> triggers;
+            std::vector<Ability> triggers;
             std::vector<PlayAction> plays;
             std::size_t play_cursor = 0;
 
@@ -108,9 +108,9 @@ namespace tkw
             }
 
             bool trigger_effect(
-                GameContext &, const std::string &, CardEffectKind kind) override
+                GameContext &, const std::string &, Ability ability) override
             {
-                return std::find(triggers.begin(), triggers.end(), kind) !=
+                return std::find(triggers.begin(), triggers.end(), ability) !=
                        triggers.end();
             }
 

@@ -30,8 +30,8 @@ namespace
     using namespace tkw::game;
     using tkw::EntityManager;
     using tkw::Option;
+    using tkw::card::Ability;
     using tkw::card::Card;
-    using tkw::card::CardEffectKind;
     using tkw::card::CardDefCatalog;
     using tkw::card::CardManager;
     using tkw::card::ResponseKind;
@@ -898,7 +898,7 @@ TEST_CASE("game: guanshi discards two cards to force the sha")
 
     TestDecider decider;
     decider.respond = true;    // 目标打出闪
-    decider.triggers = {CardEffectKind::DiscardTwoForceDamage};
+    decider.triggers = {Ability::DiscardTwoForceDamage};
     const auto played = g.cards.hand("a")[0];  // 杀
     auto r = resolve_play(g.ctx, decider, "a", played, {"b"});
     REQUIRE(r.is_ok());
@@ -916,7 +916,7 @@ TEST_CASE("game: qilin discards target horse after damage")
     g.give("a", "sha", "s#1");
 
     TestDecider decider;
-    decider.triggers = {CardEffectKind::DiscardHorseOnDamage};
+    decider.triggers = {Ability::DiscardHorseOnDamage};
     const auto played = g.cards.hand("a")[0];
     auto r = resolve_play(g.ctx, decider, "a", played, {"b"});
     REQUIRE(r.is_ok());
@@ -935,7 +935,7 @@ TEST_CASE("game: hanbing converts damage into discarding two cards")
     g.give("b", "shan", "s#3");
 
     TestDecider decider;
-    decider.triggers = {CardEffectKind::DamageAsDiscard};
+    decider.triggers = {Ability::DamageAsDiscard};
     const auto played = g.cards.hand("a")[0];
     auto r = resolve_play(g.ctx, decider, "a", played, {"b"});
     REQUIRE(r.is_ok());
@@ -955,7 +955,7 @@ TEST_CASE("game: qinglong follows up with another sha after jink")
 
     TestDecider decider;
     decider.respond = true;   // 第一刀被闪，第二刀无闪可出
-    decider.triggers = {CardEffectKind::ExtraShaAfterJink};
+    decider.triggers = {Ability::ExtraShaAfterJink};
     const auto played = g.cards.hand("a")[0];
     auto r = resolve_play(g.ctx, decider, "a", played, {"b"});
     REQUIRE(r.is_ok());

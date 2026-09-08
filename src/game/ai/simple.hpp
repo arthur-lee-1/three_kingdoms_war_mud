@@ -48,7 +48,7 @@ namespace tkw
             }
 
             bool trigger_effect(
-                GameContext &, const std::string &, card::CardEffectKind) override
+                GameContext &, const std::string &, card::Ability) override
             {
                 return true;
             }

@@ -10,8 +10,8 @@
         { "suit": "heart", "number": 6 }
     ],
     "text": "出牌阶段，对一名其他角色使用，置于其判定区。其判定阶段进行判定，结果为红桃则本牌弃置；否则跳过其出牌阶段。",
-    "effect": {
-        "kind": "delayed_play_skip",
-        "scope": "one_other"
+    "judge": {
+        "trigger": "not_heart",
+        "success": "skip_play"
     }
 }

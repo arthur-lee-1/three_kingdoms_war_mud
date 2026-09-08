@@ -28,10 +28,10 @@ namespace tkw
 {
     namespace game
     {
-        /** @brief 该定义是否可作无懈响应牌（数据标记 effect.counter，不再认 id）。 */
+        /** @brief 该定义是否可作无懈响应牌（数据标记 counter，不再认 id）。 */
         inline bool is_counter_def(const card::CardDef &def)
         {
-            return def.effect.is_some() && def.effect.unwrap().counter;
+            return def.counter;
         }
 
         inline bool has_counter_card(const GameContext &ctx, const std::string &player)

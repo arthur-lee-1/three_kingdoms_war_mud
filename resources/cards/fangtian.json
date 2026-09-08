@@ -12,7 +12,5 @@
         "slot": "weapon",
         "range": 4
     },
-    "effect": {
-        "kind": "multi_target_sha"
-    }
+    "abilities": ["multi_target_sha"]
 }

@@ -73,8 +73,6 @@ namespace tkw
             {
             case card::CardEffectKind::RevealPick:
             case card::CardEffectKind::BorrowedSword:
-            case card::CardEffectKind::DelayedPlaySkip:
-            case card::CardEffectKind::Lightning:
                 return true;
             default:
                 return false;
@@ -152,7 +150,12 @@ namespace tkw
                 return GameResult<void>::Err(EffectError::UnknownCard);
             const card::CardDef &def = *def_opt.unwrap();
             if (def.effect.is_none())
-                return GameResult<void>::Ok();  // 装备/响应牌无主动出牌效果
+            {
+                // 装备由 equip_card 处理；其余无主动效果（如无懈）不可主动打出
+                if (def.type == card::CardType::Equipment)
+                    return GameResult<void>::Ok();
+                return GameResult<void>::Err(EffectError::UnsupportedKind);
+            }
             const card::CardEffect &eff = def.effect.unwrap();
 
             // 预校验：目标非空 + 距离

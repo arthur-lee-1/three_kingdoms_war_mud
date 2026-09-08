@@ -163,22 +163,8 @@ namespace tkw
                      {"steal", CardEffectKind::Steal},
                      {"aoe_damage", CardEffectKind::AoeDamage},
                      {"duel", CardEffectKind::Duel},
-                     {"counter_trick", CardEffectKind::CounterTrick},
                      {"reveal_pick", CardEffectKind::RevealPick},
-                     {"borrowed_sword", CardEffectKind::BorrowedSword},
-                     {"delayed_play_skip", CardEffectKind::DelayedPlaySkip},
-                     {"lightning", CardEffectKind::Lightning},
-                     {"no_sha_limit", CardEffectKind::NoShaLimit},
-                     {"ignore_armor", CardEffectKind::IgnoreArmor},
-                     {"cixiong", CardEffectKind::Cixiong},
-                     {"extra_sha_after_jink", CardEffectKind::ExtraShaAfterJink},
-                     {"two_cards_as_sha", CardEffectKind::TwoCardsAsSha},
-                     {"discard_two_force_damage", CardEffectKind::DiscardTwoForceDamage},
-                     {"multi_target_sha", CardEffectKind::MultiTargetSha},
-                     {"discard_horse_on_damage", CardEffectKind::DiscardHorseOnDamage},
-                     {"damage_as_discard", CardEffectKind::DamageAsDiscard},
-                     {"judgement_jink", CardEffectKind::JudgementJink},
-                     {"black_sha_immune", CardEffectKind::BlackShaImmune}});
+                     {"borrowed_sword", CardEffectKind::BorrowedSword}});
                 if (kind.is_err())
                     return cfg::ConfigResult<CardEffect>::Err(kind.unwrap_err());
                 eff.kind = kind.unwrap();
@@ -212,16 +198,6 @@ namespace tkw
                 if (range.is_err())
                     return cfg::ConfigResult<CardEffect>::Err(range.unwrap_err());
                 eff.range = static_cast<int>(range.unwrap());
-
-                auto rescue = cfg::opt_bool(obj, "rescue", false, path);
-                if (rescue.is_err())
-                    return cfg::ConfigResult<CardEffect>::Err(rescue.unwrap_err());
-                eff.rescue = rescue.unwrap();
-
-                auto counter = cfg::opt_bool(obj, "counter", false, path);
-                if (counter.is_err())
-                    return cfg::ConfigResult<CardEffect>::Err(counter.unwrap_err());
-                eff.counter = counter.unwrap();
 
                 // kind 所需的字段不变量：缺失/为 0 一律加载失败（不静默按 0 结算）
                 switch (eff.kind)
@@ -287,6 +263,99 @@ namespace tkw
                 eq.direction = dir.unwrap();
 
                 return cfg::ConfigResult<CardEquip>::Ok(std::move(eq));
+            }
+
+            /** 解析 judge 对象（延时锦囊/防具判定：条件 + 成功/失败动作）。 */
+            cfg::ConfigResult<JudgeEffect> parse_judge(
+                const json::Json &obj, std::string_view path)
+            {
+                JudgeEffect j;
+                auto trigger = require_enum<JudgeTrigger>(
+                    obj, "trigger", path,
+                    {{"red", JudgeTrigger::Red},
+                     {"black", JudgeTrigger::Black},
+                     {"heart", JudgeTrigger::Heart},
+                     {"not_heart", JudgeTrigger::NotHeart},
+                     {"spade_2_9", JudgeTrigger::Spade2to9}});
+                if (trigger.is_err())
+                    return cfg::ConfigResult<JudgeEffect>::Err(trigger.unwrap_err());
+                j.trigger = trigger.unwrap();
+
+                const std::initializer_list<std::pair<std::string_view, JudgeAction>>
+                    action_table = {
+                        {"nothing", JudgeAction::Nothing},
+                        {"skip_play", JudgeAction::SkipPlay},
+                        {"damage", JudgeAction::Damage},
+                        {"jink", JudgeAction::Jink},
+                        {"pass_to_next", JudgeAction::PassToNext}};
+
+                auto success =
+                    require_enum<JudgeAction>(obj, "success", path, action_table);
+                if (success.is_err())
+                    return cfg::ConfigResult<JudgeEffect>::Err(success.unwrap_err());
+                j.success = success.unwrap();
+
+                auto failure =
+                    opt_enum<JudgeAction>(obj, "failure", path, action_table);
+                if (failure.is_err())
+                    return cfg::ConfigResult<JudgeEffect>::Err(failure.unwrap_err());
+                j.failure = failure.unwrap().unwrap_or(JudgeAction::Nothing);
+
+                auto amount = cfg::opt_int(obj, "amount", 0, path);
+                if (amount.is_err())
+                    return cfg::ConfigResult<JudgeEffect>::Err(amount.unwrap_err());
+                j.amount = static_cast<int>(amount.unwrap());
+
+                return cfg::ConfigResult<JudgeEffect>::Ok(std::move(j));
+            }
+
+            /** 解析 abilities 数组（缺省 = 空；未知能力报 InvalidValue）。 */
+            cfg::ConfigResult<std::vector<Ability>> parse_abilities(
+                const json::Json &root, std::string_view path)
+            {
+                std::vector<Ability> out;
+                const auto *o = root.try_as_object();
+                if (!o)
+                    return fail<std::vector<Ability>>(
+                        cfg::ConfigErrorKind::TypeMismatch,
+                        std::string(path.empty() ? "root" : path));
+                if (!o->contains("abilities"))
+                    return cfg::ConfigResult<std::vector<Ability>>::Ok(std::move(out));
+
+                const json::Json &v = (*o)["abilities"];
+                const auto *arr = v.try_as_array();
+                if (!arr)
+                    return fail<std::vector<Ability>>(
+                        cfg::ConfigErrorKind::TypeMismatch,
+                        key_path(path, "abilities"));
+
+                const auto prefix = key_path(path, "abilities");
+                for (std::size_t i = 0; i < arr->size(); ++i)
+                {
+                    const std::string ip = prefix + "[" + std::to_string(i) + "]";
+                    auto s = (*arr)[i].try_as_string();
+                    if (!s)
+                        return fail<std::vector<Ability>>(
+                            cfg::ConfigErrorKind::TypeMismatch, ip);
+                    auto a = enum_value<Ability>(
+                        *s, ip,
+                        {{"no_sha_limit", Ability::NoShaLimit},
+                         {"ignore_armor", Ability::IgnoreArmor},
+                         {"cixiong", Ability::Cixiong},
+                         {"extra_sha_after_jink", Ability::ExtraShaAfterJink},
+                         {"two_cards_as_sha", Ability::TwoCardsAsSha},
+                         {"discard_two_force_damage", Ability::DiscardTwoForceDamage},
+                         {"multi_target_sha", Ability::MultiTargetSha},
+                         {"discard_horse_on_damage", Ability::DiscardHorseOnDamage},
+                         {"damage_as_discard", Ability::DamageAsDiscard},
+                         {"judgement_jink", Ability::JudgementJink},
+                         {"black_sha_immune", Ability::BlackShaImmune}});
+                    if (a.is_err())
+                        return cfg::ConfigResult<std::vector<Ability>>::Err(
+                            a.unwrap_err());
+                    out.push_back(a.unwrap());
+                }
+                return cfg::ConfigResult<std::vector<Ability>>::Ok(std::move(out));
             }
 
             /**
@@ -371,6 +440,33 @@ namespace tkw
                         return cfg::ConfigResult<CardDef>::Err(eq.unwrap_err());
                     def.equip = Option<CardEquip>::Some(std::move(eq).unwrap());
                 }
+
+                auto judge = opt_object(root, "judge", path);
+                if (judge.is_err())
+                    return cfg::ConfigResult<CardDef>::Err(judge.unwrap_err());
+                if (judge.unwrap().is_some())
+                {
+                    auto j = parse_judge(
+                        *judge.unwrap().unwrap(), key_path(path, "judge"));
+                    if (j.is_err())
+                        return cfg::ConfigResult<CardDef>::Err(j.unwrap_err());
+                    def.judge = Option<JudgeEffect>::Some(std::move(j).unwrap());
+                }
+
+                auto abilities = parse_abilities(root, path);
+                if (abilities.is_err())
+                    return cfg::ConfigResult<CardDef>::Err(abilities.unwrap_err());
+                def.abilities = std::move(abilities).unwrap();
+
+                auto rescue = cfg::opt_bool(root, "rescue", false, path);
+                if (rescue.is_err())
+                    return cfg::ConfigResult<CardDef>::Err(rescue.unwrap_err());
+                def.rescue = rescue.unwrap();
+
+                auto counter = cfg::opt_bool(root, "counter", false, path);
+                if (counter.is_err())
+                    return cfg::ConfigResult<CardDef>::Err(counter.unwrap_err());
+                def.counter = counter.unwrap();
 
                 return cfg::ConfigResult<CardDef>::Ok(std::move(def));
             }

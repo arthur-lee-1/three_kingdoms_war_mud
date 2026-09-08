@@ -21,7 +21,8 @@ namespace tkw
     {
         /**
          * @brief 返回牌堆中「本应可主动打出但引擎尚未实现」的卡 id（deck 序）。
-         * @note 装备牌打出即装备、闪/无懈为响应牌，均不计入未实现。
+         * @note 装备牌打出即装备、闪/无懈为响应牌，均不计入未实现；
+         *       延时锦囊的判定阶段已实现，但出牌阶段尚无法放置，故计入。
          */
         inline std::vector<std::string> unsupported_cards(
             const card::CardDefCatalog &catalog)
@@ -29,10 +30,17 @@ namespace tkw
             std::vector<std::string> out;
             for (const auto &def : catalog)
             {
-                if (def.type == card::CardType::Equipment || def.effect.is_none())
+                if (def.type == card::CardType::Equipment)
                     continue;
-                if (is_unimplemented_active_kind(def.effect.unwrap().kind))
+                if (def.effect.is_some())
+                {
+                    if (is_unimplemented_active_kind(def.effect.unwrap().kind))
+                        out.push_back(def.id);
+                }
+                else if (def.judge.is_some())
+                {
                     out.push_back(def.id);
+                }
             }
             return out;
         }

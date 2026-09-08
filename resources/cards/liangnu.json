@@ -13,7 +13,5 @@
         "slot": "weapon",
         "range": 1
     },
-    "effect": {
-        "kind": "no_sha_limit"
-    }
+    "abilities": ["no_sha_limit"]
 }

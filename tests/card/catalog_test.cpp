@@ -80,21 +80,40 @@ TEST_CASE("card: parse_card_def equipment with horse direction")
     CHECK(eq.direction.contains(HorseDirection::Offensive));
 }
 
-TEST_CASE("card: parse_card_def weapon carries range")
+TEST_CASE("card: parse_card_def weapon carries range and ability")
 {
     const auto d = doc(R"({
         "id": "liangnu", "name": "诸葛连弩", "type": "equipment", "subtype": "weapon",
         "copies": [ {"suit": "club", "number": 1} ],
         "equip": {"slot": "weapon", "range": 1},
-        "effect": {"kind": "no_sha_limit"}
+        "abilities": ["no_sha_limit"]
     })");
     auto r = parse_card_def(d.root(), "liangnu");
     REQUIRE(r.is_ok());
     REQUIRE(r.unwrap().equip.is_some());
     CHECK(r.unwrap().equip.unwrap().slot == EquipSlot::Weapon);
     CHECK(r.unwrap().equip.unwrap().range == 1);
-    REQUIRE(r.unwrap().effect.is_some());
-    CHECK(r.unwrap().effect.unwrap().kind == CardEffectKind::NoShaLimit);
+    CHECK(r.unwrap().effect.is_none());
+    REQUIRE(r.unwrap().abilities.size() == 1);
+    CHECK(r.unwrap().abilities[0] == Ability::NoShaLimit);
+}
+
+TEST_CASE("card: judge descriptor parses")
+{
+    auto d = parse_card_def(
+        doc(R"({
+            "id": "shandian", "name": "闪电", "type": "trick", "subtype": "delayed",
+            "copies": [ {"suit": "spade", "number": 1} ],
+            "judge": {"trigger": "spade_2_9", "success": "damage",
+                      "failure": "pass_to_next", "amount": 3}
+        })").root(), "shandian");
+    REQUIRE(d.is_ok());
+    REQUIRE(d.unwrap().judge.is_some());
+    const auto &j = d.unwrap().judge.unwrap();
+    CHECK(j.trigger == JudgeTrigger::Spade2to9);
+    CHECK(j.success == JudgeAction::Damage);
+    CHECK(j.failure == JudgeAction::PassToNext);
+    CHECK(j.amount == 3);
 }
 
 TEST_CASE("card: parse_card_def default set / missing optionals")
@@ -145,25 +164,27 @@ TEST_CASE("card: opt default must not swallow type mismatch")
     CHECK(r.unwrap_err() == ConfigError{ConfigErrorKind::TypeMismatch, "a.effect.amount"});
 }
 
-TEST_CASE("card: effect rescue/counter flags parse with false default")
+TEST_CASE("card: rescue/counter flags parse with false default")
 {
     auto r = parse_card_def(
         doc(R"({"id": "tao", "name": "桃", "type": "basic", "subtype": "heal",
                  "copies": [ {"suit": "heart", "number": 3} ],
-                 "effect": {"kind": "heal", "amount": 1, "scope": "self", "rescue": true}})").root(),
+                 "effect": {"kind": "heal", "amount": 1, "scope": "self"},
+                 "rescue": true})").root(),
         "tao");
     REQUIRE(r.is_ok());
-    CHECK(r.unwrap().effect.unwrap().rescue);
-    CHECK_FALSE(r.unwrap().effect.unwrap().counter);
+    CHECK(r.unwrap().rescue);
+    CHECK_FALSE(r.unwrap().counter);
 
     auto c = parse_card_def(
         doc(R"({"id": "wuxie", "name": "无懈可击", "type": "trick", "subtype": "instant",
                  "copies": [ {"suit": "spade", "number": 11} ],
-                 "effect": {"kind": "counter_trick", "counter": true}})").root(),
+                 "counter": true})").root(),
         "wuxie");
     REQUIRE(c.is_ok());
-    CHECK(c.unwrap().effect.unwrap().counter);
-    CHECK_FALSE(c.unwrap().effect.unwrap().rescue);
+    CHECK(c.unwrap().counter);
+    CHECK_FALSE(c.unwrap().rescue);
+    CHECK(c.unwrap().effect.is_none());
 }
 
 TEST_CASE("card: effect field invariants and subtype are enforced")

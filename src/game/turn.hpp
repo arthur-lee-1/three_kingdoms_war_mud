@@ -82,7 +82,7 @@ namespace tkw
             const auto def_opt = ctx.catalog->find(delayed.def_id);
             if (def_opt.is_none())
                 return TurnResult<DelayedOutcome>::Err(TurnError::UnknownCard);
-            const auto &eff = def_opt.unwrap()->effect;
+            const card::CardDef &def = *def_opt.unwrap();
 
             // 先从判定区移除延时牌（各分支决定弃置或移送下家）
             auto removed = ctx.cards->remove_from_judge(player, delayed.instance_id);
@@ -96,36 +96,29 @@ namespace tkw
             ctx.cards->discard(judge_card);  // 判定牌进弃牌堆
             emit_card_discarded(ctx, player, judge_card);
 
-            if (eff.is_none())
+            if (def.judge.is_none())
             {
                 ctx.cards->discard(delayed_card);
                 emit_card_discarded(ctx, player, delayed_card);
                 return TurnResult<DelayedOutcome>::Ok(DelayedOutcome::Normal);
             }
 
-            switch (eff.unwrap().kind)
+            switch (judge_result(def.judge.unwrap(), judge_card))
             {
-            case card::CardEffectKind::DelayedPlaySkip:
-                // 乐不思蜀：非红桃 → 跳过出牌阶段
+            case card::JudgeAction::SkipPlay:
                 ctx.cards->discard(delayed_card);
                 emit_card_discarded(ctx, player, delayed_card);
-                if (judge_card.suit != card::Suit::Heart)
-                    return TurnResult<DelayedOutcome>::Ok(DelayedOutcome::SkipPlay);
-                return TurnResult<DelayedOutcome>::Ok(DelayedOutcome::Normal);
+                return TurnResult<DelayedOutcome>::Ok(DelayedOutcome::SkipPlay);
 
-            case card::CardEffectKind::Lightning:
+            case card::JudgeAction::Damage:
+                ctx.cards->discard(delayed_card);
+                emit_card_discarded(ctx, player, delayed_card);
+                deal_damage(ctx, ai, def.name, player, def.judge.unwrap().amount);
+                return TurnResult<DelayedOutcome>::Ok(
+                    DelayedOutcome::LightningStruck);
+
+            case card::JudgeAction::PassToNext:
             {
-                const bool struck = judge_card.suit == card::Suit::Spade &&
-                                    judge_card.number >= 2 && judge_card.number <= 9;
-                if (struck)
-                {
-                    ctx.cards->discard(delayed_card);
-                    emit_card_discarded(ctx, player, delayed_card);
-                    deal_damage(ctx, ai, "闪电", player, eff.unwrap().amount);
-                    return TurnResult<DelayedOutcome>::Ok(
-                        DelayedOutcome::LightningStruck);
-                }
-                // 未劈中 → 移入下家判定区
                 const std::string next = next_player(ctx, player);
                 ctx.cards->add_to_judge(next, delayed_card);
                 emit_card_moved(
@@ -133,6 +126,8 @@ namespace tkw
                 return TurnResult<DelayedOutcome>::Ok(DelayedOutcome::PassedToNext);
             }
 
+            case card::JudgeAction::Nothing:
+            case card::JudgeAction::Jink:
             default:
                 ctx.cards->discard(delayed_card);
                 emit_card_discarded(ctx, player, delayed_card);
@@ -151,7 +146,7 @@ namespace tkw
         /** @brief 本回合杀次数上限（诸葛连弩 = 不限）。 */
         inline int sha_limit(const GameContext &ctx, const std::string &player)
         {
-            if (has_equipment_effect(ctx, player, card::CardEffectKind::NoShaLimit))
+            if (has_ability(ctx, player, card::Ability::NoShaLimit))
                 return std::numeric_limits<int>::max();
             return 1;
         }

@@ -3,9 +3,9 @@
  * @brief 卡牌域值类型：枚举 + 不可变 CardDef（卡牌定义）。
  * @note 本文件不含任何 JSON 解析（归 catalog.hpp）。CardDef 是纯值类型：
  *       解析器产出后即独立于 Document 生命周期，可直接值拷贝/比较。
- * @note effect.kind 是「配置数据 ↔ 代码语义」的唯一接缝：JSON 里写了哪个
- *       kind，代码里的结算 switch 就调哪个语义。未知 kind 在加载时
- *       直接 InvalidValue 失败，保证跑起来的数据永远是代码认识的。
+ * @note effect.kind / judge / abilities 是「配置数据 ↔ 代码语义」的三个接缝：
+ *       主动效果、判定条件、装备被动分别承载，未知值在加载时直接
+ *       InvalidValue 失败，保证跑起来的数据永远是代码认识的。
  */
 
 #ifndef INCLUDE_TKW_CARD_DEF_HPP
@@ -39,36 +39,69 @@ namespace tkw
         };
 
         /**
-         * @brief 效果类别（封闭枚举，与 JSON 的 effect.kind 一一对应）。
-         * @note 语义（伤害怎么算、响应窗口怎么开）留在 gameplay 域按 kind
-         *       switch；此处只承载「这张卡携带什么效果参数」。
+         * @brief 主动效果类别（封闭枚举，与 JSON 的 effect.kind 一一对应）。
+         * @note 只承载「打出的牌怎么结算」；装备被动见 Ability，延时判定见
+         *       JudgeEffect（条件进数据）。
          */
         enum class CardEffectKind : std::uint8_t
         {
-            Damage,                /**< 造成 damage 点伤害（杀/南蛮/万箭） */
-            Jink,                  /**< 响应牌：抵消杀/万箭（闪） */
-            Heal,                  /**< 回复 amount 点体力（桃/桃园） */
-            Draw,                  /**< 摸 count 张牌（无中生有） */
-            DiscardTarget,         /**< 弃置目标 count 张牌（过河拆桥） */
-            Steal,                 /**< 获得目标 count 张牌（顺手牵羊） */
-            AoeDamage,             /**< 全场响应 response，否则受 amount 伤害 */
-            Duel,                  /**< 决斗：轮流出杀 */
-            CounterTrick,          /**< 无懈可击：抵消锦囊 */
-            RevealPick,            /**< 五谷丰登：亮牌按序挑选 */
-            BorrowedSword,         /**< 借刀杀人 */
-            DelayedPlaySkip,       /**< 乐不思蜀：判定不为红桃则跳过出牌 */
-            Lightning,             /**< 闪电：判定黑桃2~9 则雷伤 */
+            Damage,        /**< 造成 amount 点伤害（杀） */
+            Jink,          /**< 响应牌：抵消杀/万箭（闪） */
+            Heal,          /**< 回复 amount 点体力（桃/桃园） */
+            Draw,          /**< 摸 count 张牌（无中生有） */
+            DiscardTarget, /**< 弃置目标 count 张牌（过河拆桥） */
+            Steal,         /**< 获得目标 count 张牌（顺手牵羊） */
+            AoeDamage,     /**< 全场响应 response，否则受 amount 伤害 */
+            Duel,          /**< 决斗：轮流出杀 */
+            RevealPick,    /**< 五谷丰登（未实现） */
+            BorrowedSword, /**< 借刀杀人（未实现） */
+        };
+
+        /** @brief 装备被动能力（一件装备可带多个，经 equip.hpp 查询）。 */
+        enum class Ability : std::uint8_t
+        {
             NoShaLimit,            /**< 诸葛连弩：杀无次数限制 */
             IgnoreArmor,           /**< 青釭剑：无视防具 */
-            Cixiong,               /**< 雌雄双股剑（依赖性别，简单版可空） */
+            Cixiong,               /**< 雌雄双股剑（未实现） */
             ExtraShaAfterJink,     /**< 青龙偃月刀：被闪可再出杀 */
-            TwoCardsAsSha,         /**< 丈八蛇矛：两张手牌当杀 */
+            TwoCardsAsSha,         /**< 丈八蛇矛（未实现） */
             DiscardTwoForceDamage, /**< 贯石斧：弃两牌令杀仍造成伤害 */
-            MultiTargetSha,        /**< 方天画戟：最后手牌可多目标 */
+            MultiTargetSha,        /**< 方天画戟（未实现） */
             DiscardHorseOnDamage,  /**< 麒麟弓：伤害后弃目标坐骑 */
             DamageAsDiscard,       /**< 寒冰剑：防止伤害改弃两张牌 */
-            JudgementJink,         /**< 八卦阵：判定红色视为闪 */
+            JudgementJink,         /**< 八卦阵：判定成功视为闪 */
             BlackShaImmune,        /**< 仁王盾：黑杀无效 */
+        };
+
+        /** @brief 判定触发条件（数据描述，不再写死在代码里）。 */
+        enum class JudgeTrigger : std::uint8_t
+        {
+            Red,       /**< 红色（♥/♦） */
+            Black,     /**< 黑色（♠/♣） */
+            Heart,     /**< 红桃 */
+            NotHeart,  /**< 非红桃 */
+            Spade2to9, /**< 黑桃 2~9 */
+        };
+
+        /** @brief 判定结果动作（触发/未触发各一个）。 */
+        enum class JudgeAction : std::uint8_t
+        {
+            Nothing,    /**< 无额外效果 */
+            SkipPlay,   /**< 跳过出牌阶段（乐不思蜀） */
+            Damage,     /**< 造成 amount 点伤害（闪电） */
+            Jink,       /**< 视为打出闪（八卦阵） */
+            PassToNext, /**< 移入下家判定区（闪电未劈中） */
+        };
+
+        /** @brief 延时锦囊/防具的判定描述：条件、成功动作、失败动作。 */
+        struct JudgeEffect
+        {
+            JudgeTrigger trigger = JudgeTrigger::Red;
+            JudgeAction success = JudgeAction::Nothing;
+            JudgeAction failure = JudgeAction::Nothing;
+            int amount = 0;
+
+            bool operator==(const JudgeEffect &) const = default;
         };
 
         /** @brief 效果作用范围（决定结算时如何选目标）。 */
@@ -137,8 +170,6 @@ namespace tkw
             Option<Scope> scope = Option<Scope>::None();
             Option<ResponseKind> response = Option<ResponseKind>::None();
             int range = 0;
-            bool rescue = false;  /**< 可作濒死救场牌（桃） */
-            bool counter = false; /**< 可作无懈响应牌（无懈可击） */
 
             bool operator==(const CardEffect &) const = default;
         };
@@ -159,6 +190,10 @@ namespace tkw
             std::string text;
             Option<CardEffect> effect = Option<CardEffect>::None();
             Option<CardEquip> equip = Option<CardEquip>::None();
+            Option<JudgeEffect> judge = Option<JudgeEffect>::None();
+            std::vector<Ability> abilities;
+            bool rescue = false;  /**< 可作濒死救场牌（桃） */
+            bool counter = false; /**< 可作无懈响应牌（无懈可击） */
 
             bool operator==(const CardDef &) const = default;
         };

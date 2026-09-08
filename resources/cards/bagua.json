@@ -12,7 +12,9 @@
     "equip": {
         "slot": "armor"
     },
-    "effect": {
-        "kind": "judgement_jink"
+    "abilities": ["judgement_jink"],
+    "judge": {
+        "trigger": "red",
+        "success": "jink"
     }
 }

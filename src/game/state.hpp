@@ -34,6 +34,32 @@ namespace tkw
             return s == card::Suit::Heart || s == card::Suit::Diamond;
         }
 
+        /** @brief 判定牌是否满足触发条件（条件来自数据）。 */
+        inline bool judge_triggered(card::JudgeTrigger t, const card::Card &c)
+        {
+            switch (t)
+            {
+            case card::JudgeTrigger::Red:
+                return is_red_suit(c.suit);
+            case card::JudgeTrigger::Black:
+                return is_black_suit(c.suit);
+            case card::JudgeTrigger::Heart:
+                return c.suit == card::Suit::Heart;
+            case card::JudgeTrigger::NotHeart:
+                return c.suit != card::Suit::Heart;
+            case card::JudgeTrigger::Spade2to9:
+                return c.suit == card::Suit::Spade && c.number >= 2 && c.number <= 9;
+            }
+            return false;
+        }
+
+        /** @brief 判定结果动作：触发取 success，否则取 failure。 */
+        inline card::JudgeAction judge_result(
+            const card::JudgeEffect &j, const card::Card &c)
+        {
+            return judge_triggered(j.trigger, c) ? j.success : j.failure;
+        }
+
         /** @brief 扣血（纯状态：可扣到非正=濒死值状态，不触发死亡流程）。 */
         inline void apply_damage(
             GameContext &ctx, const std::string &source,

@@ -31,10 +31,10 @@ namespace tkw
 {
     namespace game
     {
-        /** @brief 该定义是否可作濒死救场牌（数据标记 effect.rescue，不再认 id）。 */
+        /** @brief 该定义是否可作濒死救场牌（数据标记 rescue，不再认 id）。 */
         inline bool is_rescue_def(const card::CardDef &def)
         {
-            return def.effect.is_some() && def.effect.unwrap().rescue;
+            return def.rescue;
         }
 
         /** @brief 玩家手牌中是否有桃。 */

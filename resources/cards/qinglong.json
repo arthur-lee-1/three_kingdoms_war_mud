@@ -12,7 +12,5 @@
         "slot": "weapon",
         "range": 3
     },
-    "effect": {
-        "kind": "extra_sha_after_jink"
-    }
+    "abilities": ["extra_sha_after_jink"]
 }

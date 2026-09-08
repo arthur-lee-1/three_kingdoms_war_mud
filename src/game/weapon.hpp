@@ -94,28 +94,33 @@ namespace tkw
             GameContext &ctx, DecisionSource &ai, const std::string &attacker,
             const card::Card &sha, const std::string &target, int amount)
         {
-            const bool ignore_armor = has_equipment_effect(
-                ctx, attacker, card::CardEffectKind::IgnoreArmor);
+            const bool ignore_armor =
+                has_ability(ctx, attacker, card::Ability::IgnoreArmor);
 
             // 仁王盾：黑色的杀对你无效（青釭剑可穿透）
             if (!ignore_armor &&
-                has_equipment_effect(ctx, target, card::CardEffectKind::BlackShaImmune) &&
+                has_ability(ctx, target, card::Ability::BlackShaImmune) &&
                 is_black_suit(sha.suit))
                 return;
 
-            // 响应窗口：八卦阵判定（红=闪）或打出闪
+            // 响应窗口：八卦阵判定（判定条件来自装备数据）或打出闪
             bool responded = false;
-            if (!ignore_armor &&
-                has_equipment_effect(ctx, target, card::CardEffectKind::JudgementJink))
+            if (!ignore_armor)
             {
-                auto judge = perform_judgement(ctx);
-                if (judge.is_some())
+                const card::CardDef *armor =
+                    find_equipment(ctx, target, card::Ability::JudgementJink);
+                if (armor && armor->judge.is_some())
                 {
-                    const card::Card judge_card = std::move(judge).unwrap();
-                    ctx.cards->discard(judge_card);  // 判定牌进弃牌堆
-                    emit_card_discarded(ctx, target, judge_card);
-                    if (is_red_suit(judge_card.suit))
-                        responded = true;
+                    auto judge = perform_judgement(ctx);
+                    if (judge.is_some())
+                    {
+                        const card::Card judge_card = std::move(judge).unwrap();
+                        ctx.cards->discard(judge_card);  // 判定牌进弃牌堆
+                        emit_card_discarded(ctx, target, judge_card);
+                        if (judge_result(armor->judge.unwrap(), judge_card) ==
+                            card::JudgeAction::Jink)
+                            responded = true;
+                    }
                 }
             }
             if (!responded)
@@ -123,8 +128,8 @@ namespace tkw
 
             // 青龙偃月刀：目标打出闪后可再对同一目标使用一张杀
             if (responded &&
-                has_equipment_effect(ctx, attacker, card::CardEffectKind::ExtraShaAfterJink) &&
-                ai.trigger_effect(ctx, attacker, card::CardEffectKind::ExtraShaAfterJink))
+                has_ability(ctx, attacker, card::Ability::ExtraShaAfterJink) &&
+                ai.trigger_effect(ctx, attacker, card::Ability::ExtraShaAfterJink))
             {
                 auto extra = find_sha_in_hand(ctx, attacker);
                 if (extra.is_some())
@@ -143,8 +148,8 @@ namespace tkw
 
             // 贯石斧：目标打出闪后可弃两张牌令杀依然命中
             if (responded &&
-                has_equipment_effect(ctx, attacker, card::CardEffectKind::DiscardTwoForceDamage) &&
-                ai.trigger_effect(ctx, attacker, card::CardEffectKind::DiscardTwoForceDamage))
+                has_ability(ctx, attacker, card::Ability::DiscardTwoForceDamage) &&
+                ai.trigger_effect(ctx, attacker, card::Ability::DiscardTwoForceDamage))
             {
                 const auto discards = ai.choose_discards(ctx, attacker, 2);
                 for (const auto &id : discards)
@@ -163,9 +168,8 @@ namespace tkw
             if (!responded)
             {
                 // 寒冰剑：防止伤害改为弃置目标两张牌
-                if (has_equipment_effect(
-                        ctx, attacker, card::CardEffectKind::DamageAsDiscard) &&
-                    ai.trigger_effect(ctx, attacker, card::CardEffectKind::DamageAsDiscard))
+                if (has_ability(ctx, attacker, card::Ability::DamageAsDiscard) &&
+                    ai.trigger_effect(ctx, attacker, card::Ability::DamageAsDiscard))
                 {
                     discard_target_cards(ctx, ai, attacker, target, 2);
                     return;
@@ -174,9 +178,9 @@ namespace tkw
                 deal_damage(ctx, ai, attacker, target, amount);
 
                 // 麒麟弓：造成伤害后可弃置目标一匹坐骑
-                if (has_equipment_effect(
-                        ctx, attacker, card::CardEffectKind::DiscardHorseOnDamage) &&
-                    ai.trigger_effect(ctx, attacker, card::CardEffectKind::DiscardHorseOnDamage))
+                if (has_ability(ctx, attacker, card::Ability::DiscardHorseOnDamage) &&
+                    ai.trigger_effect(
+                        ctx, attacker, card::Ability::DiscardHorseOnDamage))
                     discard_first_horse(ctx, target);
             }
         }

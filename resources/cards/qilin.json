@@ -12,7 +12,5 @@
         "slot": "weapon",
         "range": 5
     },
-    "effect": {
-        "kind": "discard_horse_on_damage"
-    }
+    "abilities": ["discard_horse_on_damage"]
 }

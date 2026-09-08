@@ -11,7 +11,5 @@
     "equip": {
         "slot": "armor"
     },
-    "effect": {
-        "kind": "black_sha_immune"
-    }
+    "abilities": ["black_sha_immune"]
 }
