@@ -6,6 +6,8 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
 option(TKW_ENABLE_TESTS "Compile three_kingdoms_war tests" ON)
 
 add_subdirectory(thirdparty/pjh_result)
