@@ -20,11 +20,17 @@ add_library(tkw_event INTERFACE)
 
 target_include_directories(tkw_event INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
 
+add_library(tkw_card INTERFACE)
+
+target_include_directories(tkw_card INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
+
+target_link_libraries(tkw_card INTERFACE tkw_config pjh_json)
+
 add_library(tkw_core INTERFACE)
 
 target_include_directories(tkw_core INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
 
-target_link_libraries(tkw_core INTERFACE tkw_entity tkw_config tkw_event tkw_io pjh_result)
+target_link_libraries(tkw_core INTERFACE tkw_entity tkw_config tkw_card tkw_event tkw_io pjh_result)
 
 add_executable(tkw
     main.cpp

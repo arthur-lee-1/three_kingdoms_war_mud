@@ -45,3 +45,12 @@ add_executable(handler_tests test_main.cpp event/handler_test.cpp)
 target_link_libraries(handler_tests PRIVATE tkw_event doctest)
 
 doctest_discover_tests(handler_tests)
+
+add_executable(card_tests test_main.cpp card/catalog_test.cpp)
+
+target_link_libraries(card_tests PRIVATE tkw_card doctest)
+
+target_compile_definitions(
+    card_tests PRIVATE TKW_TEST_RESOURCE_DIR="${CMAKE_SOURCE_DIR}/resources")
+
+doctest_discover_tests(card_tests)

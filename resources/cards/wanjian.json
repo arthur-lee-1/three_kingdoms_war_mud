@@ -12,6 +12,6 @@
         "kind": "aoe_damage",
         "amount": 1,
         "scope": "all_others",
-        "response": "shan"
+        "response": "jink"
     }
 }
