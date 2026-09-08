@@ -46,7 +46,7 @@ target_link_libraries(handler_tests PRIVATE tkw_event doctest)
 
 doctest_discover_tests(handler_tests)
 
-add_executable(card_tests test_main.cpp card/catalog_test.cpp)
+add_executable(card_tests test_main.cpp card/catalog_test.cpp card/manager_test.cpp)
 
 target_link_libraries(card_tests PRIVATE tkw_card doctest)
 
