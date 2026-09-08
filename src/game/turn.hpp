@@ -23,11 +23,13 @@
 #include "card/card.hpp"
 #include "card/def.hpp"
 #include "card/manager.hpp"
+#include "game/combat.hpp"
 #include "game/context.hpp"
 #include "game/decision.hpp"
 #include "game/distance.hpp"
 #include "game/equip.hpp"
 #include "game/resolver.hpp"
+#include "game/state.hpp"
 #include "util/types.hpp"
 
 namespace tkw
@@ -78,18 +80,19 @@ namespace tkw
             return TurnResult<card::Card>::Ok(std::move(c).unwrap());
         }
 
-        /** @brief 下家（环座位序；死亡跳过留待后续）。 */
+        /** @brief 下家（按实体迭代序环绕；死亡者已被移除，天然跳过）。 */
         inline std::string next_player(const GameContext &ctx, const std::string &player)
         {
-            const auto e = ctx.entities->find(player);
-            if (e.is_none())
-                return player;
-            const int n = static_cast<int>(ctx.entities->size());
-            const int next_seat = (e.unwrap()->get_seat() + 1) % n;
+            std::vector<std::string> ids;
             for (const auto &ent : *ctx.entities)
-                if (ent->get_seat() == next_seat)
-                    return ent->get_id();
-            return player;
+                ids.push_back(ent->get_id());
+            if (ids.empty())
+                return player;
+            const auto it = std::find(ids.begin(), ids.end(), player);
+            if (it == ids.end())
+                return ids.front();
+            const auto next = std::next(it);
+            return next == ids.end() ? ids.front() : *next;
         }
 
         /**
@@ -97,7 +100,7 @@ namespace tkw
          *        弃置或移入下家判定区，从玩家判定区移除）。
          */
         inline TurnResult<DelayedOutcome> resolve_delayed(
-            GameContext &ctx,
+            GameContext &ctx, DecisionSource &ai,
             std::mt19937 &rng,
             const std::string &player,
             const card::Card &delayed)
@@ -140,7 +143,7 @@ namespace tkw
                 if (struck)
                 {
                     ctx.cards->discard(delayed_card);
-                    apply_damage(ctx, "闪电", player, eff.unwrap().amount);
+                    deal_damage(ctx, ai, "闪电", player, eff.unwrap().amount);
                     return TurnResult<DelayedOutcome>::Ok(
                         DelayedOutcome::LightningStruck);
                 }
@@ -236,7 +239,7 @@ namespace tkw
             const auto judge_zone = ctx.cards->judge(player);  // 拷贝
             for (const auto &delayed : judge_zone)
             {
-                auto r = resolve_delayed(ctx, rng, player, delayed);
+                auto r = resolve_delayed(ctx, ai, rng, player, delayed);
                 if (r.is_err())
                     return TurnResult<void>::Err(r.unwrap_err());
                 if (r.unwrap() == DelayedOutcome::SkipPlay)

@@ -68,6 +68,14 @@ namespace tkw
              */
             virtual std::vector<std::string> choose_discards(
                 GameContext &ctx, const std::string &player, int count) = 0;
+
+            /**
+             * @brief 濒死救场：saver 是否对濒死的 dying 打出一张桃。
+             * @note 实现应只在「打算且能够打出」时返回 true（combat 会先检查
+             *       saver 手牌有桃再询问，并负责消费）。
+             */
+            virtual bool play_peach(
+                GameContext &ctx, const std::string &saver, const std::string &dying) = 0;
         };
     }
 }

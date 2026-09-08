@@ -158,6 +158,25 @@ namespace tkw
                 return zone_ref(judge_zone, entity_id);
             }
 
+            /**
+             * @brief 死亡清场：手牌/装备/判定区全部置入弃牌堆。
+             */
+            void discard_all(const std::string &entity_id)
+            {
+                auto drain = [this, &entity_id](auto &zone)
+                {
+                    auto it = zone.find(entity_id);
+                    if (it == zone.end())
+                        return;
+                    for (auto &c : it->second)
+                        discard_pile.push(std::move(c));
+                    zone.erase(it);
+                };
+                drain(hand_zone);
+                drain(equip_zone);
+                drain(judge_zone);
+            }
+
         private:
             std::uint64_t instance_seq = 0;
             CardStack draw_pile;

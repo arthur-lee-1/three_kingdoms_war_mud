@@ -21,9 +21,11 @@
 #include "card/manager.hpp"
 #include "entity/manager.hpp"
 #include "event/event_bus.hpp"
+#include "game/combat.hpp"
 #include "game/context.hpp"
 #include "game/decision.hpp"
 #include "game/distance.hpp"
+#include "game/state.hpp"
 #include "util/types.hpp"
 
 namespace tkw
@@ -42,39 +44,6 @@ namespace tkw
 
         template <typename T>
         using GameResult = Result<T, EffectError>;
-
-        // ── 基础状态操作 ────────────────────────────────────────────────
-
-        inline void apply_damage(
-            GameContext &ctx, const std::string &source,
-            const std::string &target, int amount)
-        {
-            const auto e = ctx.entities->find(target);
-            if (e.is_some())
-                e.unwrap()->take_damage(source, amount, false);
-        }
-
-        inline void apply_heal(GameContext &ctx, const std::string &target, int amount)
-        {
-            const auto e = ctx.entities->find(target);
-            if (e.is_some())
-                e.unwrap()->heal(amount);
-        }
-
-        /** @brief 摸 count 张进手牌；牌堆摸空即停，返回实际摸到的张数。 */
-        inline int apply_draw(GameContext &ctx, const std::string &player, int count)
-        {
-            int drew = 0;
-            for (int i = 0; i < count; ++i)
-            {
-                auto c = ctx.cards->draw();
-                if (c.is_none())
-                    break;
-                ctx.cards->add_to_hand(player, std::move(c).unwrap());
-                ++drew;
-            }
-            return drew;
-        }
 
         /** @brief 该定义是否可作为指定响应牌（杀=effect.kind==Damage，闪==Jink）。 */
         inline bool is_response_def(const card::CardDef &def, card::ResponseKind kind)
@@ -276,7 +245,7 @@ namespace tkw
                     if (eff.response.is_some())
                         responded = request_response(ctx, ai, t, eff.response.unwrap());
                     if (!responded)
-                        apply_damage(ctx, player, t, eff.amount);
+                        deal_damage(ctx, ai, player, t, eff.amount);
                 }
                 return GameResult<void>::Ok();
             }
@@ -288,7 +257,7 @@ namespace tkw
                     if (eff.response.is_some())
                         responded = request_response(ctx, ai, t, eff.response.unwrap());
                     if (!responded)
-                        apply_damage(ctx, player, t, eff.amount);
+                        deal_damage(ctx, ai, player, t, eff.amount);
                 }
                 return GameResult<void>::Ok();
             }
@@ -332,7 +301,7 @@ namespace tkw
                 {
                     if (!request_response(ctx, ai, defender, card::ResponseKind::Sha))
                     {
-                        apply_damage(ctx, attacker, defender, eff.amount);
+                        deal_damage(ctx, ai, attacker, defender, eff.amount);
                         return GameResult<void>::Ok();
                     }
                     std::swap(attacker, defender);

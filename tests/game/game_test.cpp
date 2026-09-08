@@ -82,17 +82,23 @@ namespace
         }
     };
 
-    /** 确定性决策源：respond=是否总是打出响应牌；选牌=目标手牌第一张；
+    /** 确定性决策源：respond=是否总是打出响应牌；save=是否有桃就救；
      *  plays=出牌脚本（依次执行，耗尽即结束出牌）；弃牌=手牌前 count 张。 */
     struct TestDecider : DecisionSource
     {
         bool respond = false;
+        bool save = false;
         std::vector<PlayAction> plays;
         std::size_t play_cursor = 0;
 
         bool play_response(GameContext &, const std::string &, ResponseKind) override
         {
             return respond;
+        }
+
+        bool play_peach(GameContext &, const std::string &, const std::string &) override
+        {
+            return save;
         }
 
         Card pick_card_from_target(
@@ -548,4 +554,123 @@ TEST_CASE("game: lightning passes to next player")
     CHECK(g.cards.judge_size("a") == 0);
     CHECK(g.cards.judge_size("b") == 1);  // 移到下家
     CHECK(g.cards.judge("b")[0].def_id == "shandian");
+}
+
+// ── 濒死与死亡 ──────────────────────────────────────────────────────
+
+TEST_CASE("game: dying rescued by self peach")
+{
+    TestGame g("deck");
+    g.add_player("a", 0, 4);
+    auto *b = g.add_player("b", 1, 4);
+    b->take_damage("a", 3, false);  // b: 4 → 1
+    g.give("b", "tao", "t#0");
+    g.give("a", "sha", "s#1");
+
+    TestDecider decider;
+    decider.save = true;
+    const auto played = g.cards.hand("a")[0];
+    auto r = resolve_play(g.ctx, decider, "a", played, {"b"});
+    REQUIRE(r.is_ok());
+    CHECK(b->get_hp() == 1);                   // 0 → 桃救回 1
+    CHECK(g.entities.find("b").is_some());     // 存活
+    CHECK(g.cards.hand_size("b") == 0);        // 桃已消耗
+}
+
+TEST_CASE("game: dying rescued by another player's peach")
+{
+    TestGame g("deck");
+    g.add_player("a", 0, 4);
+    auto *b = g.add_player("b", 1, 4);
+    g.add_player("c", 2, 4);
+    b->take_damage("a", 3, false);  // b: 1
+    g.give("c", "tao", "t#0");
+    g.give("a", "sha", "s#1");
+
+    TestDecider decider;
+    decider.save = true;
+    const auto played = g.cards.hand("a")[0];
+    auto r = resolve_play(g.ctx, decider, "a", played, {"b"});
+    REQUIRE(r.is_ok());
+    CHECK(b->get_hp() == 1);                   // 救回
+    CHECK(g.entities.find("b").is_some());
+    CHECK(g.cards.hand_size("c") == 0);        // c 的桃被消耗
+}
+
+TEST_CASE("game: unrescued death removes entity and rewards killer")
+{
+    TestGame g("deck");
+    g.add_player("a", 0, 4);
+    g.add_player("b", 1, 4);
+    g.cards.build_deck(g.catalog);
+    auto b = g.entities.find("b").unwrap();
+    b->take_damage("a", 3, false);  // b: 1
+    g.give("b", "sha", "s#1");      // b 手牌，死后弃置
+    g.give("a", "sha", "s#2");
+
+    TestDecider decider;  // save=false
+    const auto played = g.cards.hand("a")[0];
+    auto r = resolve_play(g.ctx, decider, "a", played, {"b"});
+    REQUIRE(r.is_ok());
+    CHECK(g.entities.find("b").is_none());        // 死亡移除
+    CHECK(g.cards.hand_size("a") == 3);           // 击杀奖励摸 3
+    CHECK(g.cards.discard_size() >= 2);           // a 的杀 + b 的手牌
+}
+
+TEST_CASE("game: death discards equipment and judgement zones")
+{
+    TestGame g("deck");
+    g.add_player("a", 0, 4);
+    auto *b = g.add_player("b", 1, 4);
+    b->take_damage("a", 3, false);  // b: 1
+    g.equip("b", "qinglong", "e#0");
+    g.cards.add_to_judge("b", Card{"L#0", "lesi", Suit::Spade, 6});
+    g.give("a", "sha", "s#2");
+
+    TestDecider decider;
+    const auto played = g.cards.hand("a")[0];
+    auto r = resolve_play(g.ctx, decider, "a", played, {"b"});
+    REQUIRE(r.is_ok());
+    CHECK(g.entities.find("b").is_none());
+    CHECK(g.cards.equip_size("b") == 0);
+    CHECK(g.cards.judge_size("b") == 0);
+    CHECK(g.cards.discard_size() >= 2);  // 装备 + 判定牌
+}
+
+TEST_CASE("game: dying and died events published")
+{
+    TestGame g("deck");
+    g.add_player("a", 0, 4);
+    g.add_player("b", 1, 4);
+    g.entities.find("b").unwrap()->take_damage("a", 3, false);  // b: 1
+    g.give("a", "sha", "s#2");
+
+    int dying = 0;
+    int died = 0;
+    auto h1 = g.bus.subscribe(tkw::Handler<tkw::EntityDyingEvent>(
+        [&](tkw::HandlerContext<tkw::EntityDyingEvent> &) { ++dying; }));
+    auto h2 = g.bus.subscribe(tkw::Handler<tkw::EntityDiedEvent>(
+        [&](tkw::HandlerContext<tkw::EntityDiedEvent> &) { ++died; }));
+
+    TestDecider decider;  // 不救 → 死亡
+    const auto played = g.cards.hand("a")[0];
+    auto r = resolve_play(g.ctx, decider, "a", played, {"b"});
+    REQUIRE(r.is_ok());
+    CHECK(dying == 1);
+    CHECK(died == 1);
+
+    // 救回时只发 Dying，不发 Died
+    dying = 0;
+    died = 0;
+    g.add_player("c", 2, 4);
+    g.entities.find("c").unwrap()->take_damage("a", 3, false);  // c: 1
+    g.give("c", "tao", "t#0");
+    g.give("a", "sha", "s#3");
+    TestDecider saver;
+    saver.save = true;
+    const auto played2 = g.cards.hand("a")[0];
+    auto r2 = resolve_play(g.ctx, saver, "a", played2, {"c"});
+    REQUIRE(r2.is_ok());
+    CHECK(dying == 1);
+    CHECK(died == 0);
 }
