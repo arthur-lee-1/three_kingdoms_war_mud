@@ -1,5 +1,6 @@
 #include <doctest/doctest.h>
 
+#include <random>
 #include <string>
 #include <vector>
 
@@ -15,15 +16,18 @@
 #include "game/decision.hpp"
 #include "game/distance.hpp"
 #include "game/resolver.hpp"
+#include "game/turn.hpp"
 
 namespace
 {
     using namespace tkw::game;
     using tkw::EntityManager;
+    using tkw::Option;
     using tkw::card::Card;
     using tkw::card::CardDefCatalog;
     using tkw::card::CardManager;
     using tkw::card::ResponseKind;
+    using tkw::card::Suit;
     using tkw::entity::Entity;
     using tkw::entity::Hp;
 
@@ -78,10 +82,13 @@ namespace
         }
     };
 
-    /** 确定性决策源：respond=是否总是打出响应牌；选牌=目标手牌第一张。 */
+    /** 确定性决策源：respond=是否总是打出响应牌；选牌=目标手牌第一张；
+     *  plays=出牌脚本（依次执行，耗尽即结束出牌）；弃牌=手牌前 count 张。 */
     struct TestDecider : DecisionSource
     {
         bool respond = false;
+        std::vector<PlayAction> plays;
+        std::size_t play_cursor = 0;
 
         bool play_response(GameContext &, const std::string &, ResponseKind) override
         {
@@ -94,6 +101,23 @@ namespace
             const auto &hand = ctx.cards->hand(target);
             REQUIRE(!hand.empty());
             return hand.front();
+        }
+
+        Option<PlayAction> choose_play(GameContext &, const std::string &) override
+        {
+            if (play_cursor >= plays.size())
+                return Option<PlayAction>::None();
+            return Option<PlayAction>::Some(plays[play_cursor++]);
+        }
+
+        std::vector<std::string> choose_discards(
+            GameContext &ctx, const std::string &player, int count) override
+        {
+            const auto &hand = ctx.cards->hand(player);
+            std::vector<std::string> out;
+            for (int i = 0; i < count && i < static_cast<int>(hand.size()); ++i)
+                out.push_back(hand[i].instance_id);
+            return out;
         }
     };
 }
@@ -362,4 +386,166 @@ TEST_CASE("game: unsupported kind is rejected and card kept")
     REQUIRE(r.is_err());
     CHECK(r.unwrap_err() == EffectError::UnsupportedKind);
     CHECK(g.cards.hand_size("a") == 1);  // 未消耗
+}
+
+// ── 回合流程 ──────────────────────────────────────────────────────────
+
+TEST_CASE("game: turn draws two and trims to hand limit")
+{
+    TestGame g("deck");
+    g.add_player("a", 0, 3);  // 手牌上限 3
+    g.add_player("b", 1, 4);
+    g.cards.build_deck(g.catalog);
+    g.give("a", "sha", "s#1");
+    g.give("a", "sha", "s#2");
+    g.give("a", "shan", "s#3");
+
+    TestDecider decider;  // 不出牌
+    std::mt19937 rng(1);
+    auto r = execute_turn(g.ctx, decider, rng, "a");
+    REQUIRE(r.is_ok());
+    CHECK(g.cards.hand_size("a") == 3);   // 3 + 摸2 = 5，弃到上限 3
+    CHECK(g.cards.discard_size() == 2);   // 弃了 2 张
+}
+
+TEST_CASE("game: sha limit one per turn")
+{
+    TestGame g("deck");
+    g.add_player("a", 0, 4);
+    auto *b = g.add_player("b", 1, 4);
+    g.cards.build_deck(g.catalog);
+    g.give("a", "sha", "s#1");
+    g.give("a", "sha", "s#2");
+
+    TestDecider decider;
+    decider.plays = {PlayAction{"s#1", {"b"}}, PlayAction{"s#2", {"b"}}};
+    std::mt19937 rng(1);
+    auto r = execute_turn(g.ctx, decider, rng, "a");
+    REQUIRE(r.is_err());
+    CHECK(r.unwrap_err() == TurnError::ShaLimitExceeded);
+    CHECK(b->get_hp() == 3);            // 第一刀命中
+    CHECK(g.cards.hand_size("a") == 3); // 2杀+摸2=4，打出1张剩3
+}
+
+TEST_CASE("game: liangnu lifts sha limit")
+{
+    TestGame g("deck");
+    g.add_player("a", 0, 4);
+    auto *b = g.add_player("b", 1, 4);
+    g.cards.build_deck(g.catalog);
+    g.equip("a", "liangnu", "e#0");
+    g.give("a", "sha", "s#1");
+    g.give("a", "sha", "s#2");
+
+    TestDecider decider;
+    decider.plays = {PlayAction{"s#1", {"b"}}, PlayAction{"s#2", {"b"}}};
+    std::mt19937 rng(1);
+    auto r = execute_turn(g.ctx, decider, rng, "a");
+    REQUIRE(r.is_ok());
+    CHECK(b->get_hp() == 2);            // 两刀全中
+    CHECK(g.cards.hand_size("a") == 2); // 4 - 2 = 2（上限 4 不弃）
+}
+
+TEST_CASE("game: equip weapon and replace same slot")
+{
+    TestGame g("deck");
+    g.add_player("a", 0, 4);
+    g.add_player("b", 1, 4);
+    g.cards.build_deck(g.catalog);
+    g.give("a", "qinglong", "e#1");
+    g.give("a", "qinggang", "e#2");
+
+    TestDecider decider;
+    decider.plays = {PlayAction{"e#1", {}}, PlayAction{"e#2", {}}};
+    std::mt19937 rng(1);
+    auto r = execute_turn(g.ctx, decider, rng, "a");
+    REQUIRE(r.is_ok());
+    CHECK(g.cards.equip_size("a") == 1);              // 同槽位只留一件
+    CHECK(g.cards.equip("a")[0].def_id == "qinggang");
+    CHECK(g.cards.discard_size() >= 1);               // 被替换的武器已弃置
+}
+
+TEST_CASE("game: lesi non-heart skips play phase")
+{
+    TestGame g("deck");
+    g.add_player("a", 0, 3);
+    auto *b = g.add_player("b", 1, 4);
+    g.give("a", "sha", "s#1");
+    g.cards.add_to_judge("a", Card{"L#0", "lesi", Suit::Spade, 6});
+
+    // 种牌堆：堆顶是判定牌（黑桃6 → 非红桃跳过出牌），其下两张供摸牌
+    g.cards.add_to_draw(Card{"d#0", "sha", Suit::Club, 2});
+    g.cards.add_to_draw(Card{"d#1", "shan", Suit::Diamond, 2});
+    g.cards.add_to_draw(Card{"j#0", "sha", Suit::Spade, 6});
+
+    TestDecider decider;
+    decider.plays = {PlayAction{"s#1", {"b"}}};
+    std::mt19937 rng(1);
+    auto r = execute_turn(g.ctx, decider, rng, "a");
+    REQUIRE(r.is_ok());
+    CHECK(b->get_hp() == 4);            // 出牌阶段被跳过
+    CHECK(g.cards.hand_size("a") == 3); // 杀 + 摸的 2 张
+    CHECK(g.cards.judge_size("a") == 0);
+}
+
+TEST_CASE("game: lesi heart judge allows play")
+{
+    TestGame g("deck");
+    g.add_player("a", 0, 3);
+    auto *b = g.add_player("b", 1, 4);
+    g.give("a", "sha", "s#1");
+    g.cards.add_to_judge("a", Card{"L#0", "lesi", Suit::Spade, 6});
+
+    g.cards.add_to_draw(Card{"d#0", "sha", Suit::Club, 2});
+    g.cards.add_to_draw(Card{"d#1", "shan", Suit::Diamond, 2});
+    g.cards.add_to_draw(Card{"j#0", "sha", Suit::Heart, 3});
+
+    TestDecider decider;
+    decider.plays = {PlayAction{"s#1", {"b"}}};
+    std::mt19937 rng(1);
+    auto r = execute_turn(g.ctx, decider, rng, "a");
+    REQUIRE(r.is_ok());
+    CHECK(b->get_hp() == 3);            // 杀正常打出
+    CHECK(g.cards.hand_size("a") == 2); // 杀打出，剩摸的 2 张
+}
+
+TEST_CASE("game: lightning strikes on spade 2-9")
+{
+    TestGame g("deck");
+    auto *a = g.add_player("a", 0, 4);
+    g.add_player("b", 1, 4);
+    g.cards.add_to_judge("a", Card{"L#0", "shandian", Suit::Spade, 1});
+
+    g.cards.add_to_draw(Card{"d#0", "sha", Suit::Club, 2});
+    g.cards.add_to_draw(Card{"d#1", "shan", Suit::Diamond, 2});
+    g.cards.add_to_draw(Card{"j#0", "sha", Suit::Spade, 8});
+
+    TestDecider decider;
+    std::mt19937 rng(1);
+    auto r = execute_turn(g.ctx, decider, rng, "a");
+    REQUIRE(r.is_ok());
+    CHECK(a->get_hp() == 1);            // 雷伤 3
+    CHECK(g.cards.judge_size("a") == 0);
+    CHECK(g.cards.judge_size("b") == 0);
+}
+
+TEST_CASE("game: lightning passes to next player")
+{
+    TestGame g("deck");
+    auto *a = g.add_player("a", 0, 4);
+    g.add_player("b", 1, 4);
+    g.cards.add_to_judge("a", Card{"L#0", "shandian", Suit::Spade, 1});
+
+    g.cards.add_to_draw(Card{"d#0", "sha", Suit::Club, 2});
+    g.cards.add_to_draw(Card{"d#1", "shan", Suit::Diamond, 2});
+    g.cards.add_to_draw(Card{"j#0", "sha", Suit::Heart, 5});
+
+    TestDecider decider;
+    std::mt19937 rng(1);
+    auto r = execute_turn(g.ctx, decider, rng, "a");
+    REQUIRE(r.is_ok());
+    CHECK(a->get_hp() == 4);              // 未劈中
+    CHECK(g.cards.judge_size("a") == 0);
+    CHECK(g.cards.judge_size("b") == 1);  // 移到下家
+    CHECK(g.cards.judge("b")[0].def_id == "shandian");
 }

@@ -61,6 +61,26 @@ namespace tkw
             /** @brief 弃牌（置弃牌堆顶）。 */
             void discard(Card card) { discard_pile.push(std::move(card)); }
 
+            /** @brief 置摸牌堆顶（种牌堆/结算后回置等）。 */
+            void add_to_draw(Card card) { draw_pile.push(std::move(card)); }
+
+            /**
+             * @brief 弃牌堆整体洗回摸牌堆（判定/摸牌时牌堆空的补牌）。
+             * @note 弃牌堆为空时无操作；转移后原地洗牌。
+             */
+            void refill_draw(std::mt19937 &rng)
+            {
+                while (true)
+                {
+                    auto c = discard_pile.pop();
+                    if (c.is_none())
+                        break;
+                    draw_pile.push(std::move(c).unwrap());
+                }
+                if (draw_pile.size() > 1)
+                    draw_pile.shuffle(rng);
+            }
+
             std::size_t draw_size() const noexcept { return draw_pile.size(); }
             std::size_t discard_size() const noexcept { return discard_pile.size(); }
 
