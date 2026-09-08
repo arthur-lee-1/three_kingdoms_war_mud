@@ -15,6 +15,7 @@
 #include "game/context.hpp"
 #include "game/decision.hpp"
 #include "game/distance.hpp"
+#include "game/loop.hpp"
 #include "game/resolver.hpp"
 #include "game/turn.hpp"
 
@@ -757,4 +758,61 @@ TEST_CASE("game: tao is a basic card and cannot be countered")
     REQUIRE(r.is_ok());
     CHECK(a->get_hp() == 3);   // 桃生效（基本牌不可无懈）
     CHECK(g.cards.hand_size("a") == 1);  // 无懈未被消耗
+}
+
+// ── 对局主循环 ───────────────────────────────────────────────────────
+
+TEST_CASE("game: next_player wraps and skips removed players")
+{
+    TestGame g("deck");
+    g.add_player("a", 0, 4);
+    g.add_player("b", 1, 4);
+    g.add_player("c", 2, 4);
+    g.add_player("d", 3, 4);
+    CHECK(next_player(g.ctx, "a") == "b");
+    CHECK(next_player(g.ctx, "d") == "a");
+    g.entities.remove("b");
+    CHECK(next_player(g.ctx, "a") == "c");  // b 已移除 → 跳过
+    CHECK(next_player(g.ctx, "d") == "a");
+}
+
+TEST_CASE("game: prepare_game deals four initial cards to each")
+{
+    TestGame g("deck");
+    g.add_player("a", 0, 4);
+    g.add_player("b", 1, 4);
+    std::mt19937 rng(7);
+    prepare_game(g.ctx, rng, 4);
+    CHECK(g.cards.hand_size("a") == 4);
+    CHECK(g.cards.hand_size("b") == 4);
+    CHECK(g.cards.draw_size() == 108 - 8);
+    CHECK(alive_count(g.ctx) == 2);
+}
+
+TEST_CASE("game: play_game ends when one player kills the other")
+{
+    TestGame g("deck");
+    g.add_player("a", 0, 1);
+    g.add_player("b", 1, 1);
+    g.give("a", "sha", "s#1");  // 发牌前给一张杀
+
+    TestDecider decider;
+    decider.plays = {PlayAction{"s#1", {"b"}}};
+    std::mt19937 rng(42);
+    auto r = play_game(g.ctx, decider, rng, "a");
+    REQUIRE(r.is_ok());
+    CHECK(r.unwrap().winner == "a");
+    CHECK(r.unwrap().rounds >= 1);
+    CHECK(g.entities.find("b").is_none());   // b 已死亡移除
+    CHECK(g.entities.find("a").is_some());
+}
+
+TEST_CASE("game: play_game with no players is an error")
+{
+    TestGame g("deck");
+    TestDecider decider;
+    std::mt19937 rng(1);
+    auto r = play_game(g.ctx, decider, rng, "a");
+    REQUIRE(r.is_err());
+    CHECK(r.unwrap_err() == LoopError::NoPlayers);
 }
