@@ -75,15 +75,17 @@ namespace tkw
 
         /**
          * @brief 主循环：从 first_player 起轮转执行回合，直到只剩一名存活玩家。
+         * @param hand 每名玩家初始手牌数。
          * @return Ok(GameOutcome) 或 Err(LoopError)。
          */
         inline LoopResult<GameOutcome> play_game(
-            GameContext &ctx, DecisionSource &ai, const std::string &first_player)
+            GameContext &ctx, DecisionSource &ai, const std::string &first_player,
+            int hand = 4)
         {
             if (ctx.entities->empty())
                 return LoopResult<GameOutcome>::Err(LoopError::NoPlayers);
 
-            prepare_game(ctx, 4);
+            prepare_game(ctx, hand);
 
             std::string current = first_player;
             int rounds = 0;
