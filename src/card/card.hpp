@@ -10,12 +10,12 @@
 #define INCLUDE_TKW_CARD_CARD_HPP
 
 #include <cstddef>
-#include <random>
 #include <string>
 #include <utility>
 #include <vector>
 
 #include "card/def.hpp"
+#include "util/rng.hpp"
 #include "util/types.hpp"
 
 namespace tkw
@@ -76,13 +76,13 @@ namespace tkw
                 return Option<const Card *>::Some(&cards.back());
             }
 
-            /** @brief Fisher–Yates 原地洗牌。 */
-            void shuffle(std::mt19937 &rng)
+            /** @brief Fisher–Yates 原地洗牌（随机源经 Rng 抽象）。 */
+            void shuffle(Rng &rng)
             {
                 for (std::size_t i = cards.size(); i > 1; --i)
                 {
-                    std::uniform_int_distribution<std::size_t> d(0, i - 1);
-                    const std::size_t j = d(rng);
+                    const std::size_t j =
+                        uniform_below(rng, static_cast<std::uint32_t>(i));
                     std::swap(cards[i - 1], cards[j]);
                 }
             }

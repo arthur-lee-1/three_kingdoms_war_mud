@@ -1,7 +1,6 @@
 #include <doctest/doctest.h>
 
 #include <algorithm>
-#include <random>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -13,6 +12,7 @@
 #include "card/def.hpp"
 #include "card/manager.hpp"
 #include "config/resource.hpp"
+#include "util/rng.hpp"
 
 namespace
 {
@@ -57,7 +57,7 @@ TEST_CASE("card: CardStack shuffle is a permutation of the pile")
     for (const auto &id : before)
         stack.push(make_card(id, "sha", Suit::Spade, 1));
 
-    std::mt19937 rng(42);
+    tkw::SeededRng rng(42);
     stack.shuffle(rng);
 
     std::vector<std::string> after;

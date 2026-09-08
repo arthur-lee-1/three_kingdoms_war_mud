@@ -1,6 +1,5 @@
 #include <doctest/doctest.h>
 
-#include <random>
 #include <string>
 #include <vector>
 
@@ -18,6 +17,7 @@
 #include "game/loop.hpp"
 #include "game/resolver.hpp"
 #include "game/turn.hpp"
+#include "util/rng.hpp"
 
 namespace
 {
@@ -40,7 +40,7 @@ namespace
         EntityManager entities;
         CardManager cards;
         CardDefCatalog catalog;
-        std::mt19937 rng{1};
+        tkw::SeededRng rng{1};
         GameContext ctx;
 
         TestGame(const char *deck_name) :

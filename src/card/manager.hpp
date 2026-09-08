@@ -14,7 +14,6 @@
 
 #include <algorithm>
 #include <cstdint>
-#include <random>
 #include <string>
 #include <unordered_map>
 #include <utility>
@@ -23,6 +22,7 @@
 #include "card/card.hpp"
 #include "card/catalog.hpp"
 #include "card/def.hpp"
+#include "util/rng.hpp"
 #include "util/types.hpp"
 
 namespace tkw
@@ -71,7 +71,7 @@ namespace tkw
              * @brief 弃牌堆整体洗回摸牌堆（判定/摸牌时牌堆空的补牌）。
              * @note 弃牌堆为空时无操作；转移后原地洗牌。
              */
-            void refill_draw(std::mt19937 &rng)
+            void refill_draw(Rng &rng)
             {
                 while (true)
                 {
@@ -87,7 +87,7 @@ namespace tkw
             std::size_t draw_size() const noexcept { return draw_pile.size(); }
             std::size_t discard_size() const noexcept { return discard_pile.size(); }
 
-            void shuffle_draw(std::mt19937 &rng) { draw_pile.shuffle(rng); }
+            void shuffle_draw(Rng &rng) { draw_pile.shuffle(rng); }
             Option<const Card *> draw_top() const { return draw_pile.top(); }
 
             // ── 手牌区 ──────────────────────────────────────────────────
