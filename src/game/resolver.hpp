@@ -26,7 +26,9 @@
 #include "game/counter.hpp"
 #include "game/decision.hpp"
 #include "game/distance.hpp"
+#include "game/response.hpp"
 #include "game/state.hpp"
+#include "game/weapon.hpp"
 #include "util/types.hpp"
 
 namespace tkw
@@ -45,87 +47,6 @@ namespace tkw
 
         template <typename T>
         using GameResult = Result<T, EffectError>;
-
-        /** @brief 该定义是否可作为指定响应牌（杀=effect.kind==Damage，闪==Jink）。 */
-        inline bool is_response_def(const card::CardDef &def, card::ResponseKind kind)
-        {
-            if (def.effect.is_none())
-                return false;
-            const auto k = def.effect.unwrap().kind;
-            switch (kind)
-            {
-            case card::ResponseKind::Sha:
-                return k == card::CardEffectKind::Damage;
-            case card::ResponseKind::Jink:
-                return k == card::CardEffectKind::Jink;
-            }
-            return false;
-        }
-
-        /** @brief 实体手牌中是否存在指定响应牌。 */
-        inline bool has_response_card(
-            const GameContext &ctx, const std::string &entity_id, card::ResponseKind kind)
-        {
-            for (const auto &c : ctx.cards->hand(entity_id))
-            {
-                const auto def = ctx.catalog->find(c.def_id);
-                if (def.is_some() && is_response_def(*def.unwrap(), kind))
-                    return true;
-            }
-            return false;
-        }
-
-        /**
-         * @brief 开响应窗口：先看实体是否有响应牌，有则询问决策源，
-         *        决定打出则消费该牌（移除+弃置）。返回是否成功响应。
-         */
-        inline bool request_response(
-            GameContext &ctx, DecisionSource &ai,
-            const std::string &entity_id, card::ResponseKind kind)
-        {
-            if (!has_response_card(ctx, entity_id, kind))
-                return false;
-            if (!ai.play_response(ctx, entity_id, kind))
-                return false;
-            for (const auto &c : ctx.cards->hand(entity_id))
-            {
-                const auto def = ctx.catalog->find(c.def_id);
-                if (def.is_some() && is_response_def(*def.unwrap(), kind))
-                {
-                    auto removed = ctx.cards->remove_from_hand(entity_id, c.instance_id);
-                    if (removed.is_some())
-                        ctx.cards->discard(std::move(removed).unwrap());
-                    return true;
-                }
-            }
-            return false;
-        }
-
-        /** @brief 从 target 的任一区域移除指定牌（填 out 返回被移除的牌）。 */
-        inline bool remove_card_from_zones(
-            GameContext &ctx, const std::string &entity_id,
-            const std::string &instance_id, card::Card &out)
-        {
-            auto h = ctx.cards->remove_from_hand(entity_id, instance_id);
-            if (h.is_some())
-            {
-                out = std::move(h).unwrap();
-                return true;
-            }
-            auto e = ctx.cards->remove_from_equip(entity_id, instance_id);
-            if (e.is_some())
-            {
-                out = std::move(e).unwrap();
-                return true;
-            }
-            auto j = ctx.cards->remove_from_judge(entity_id, instance_id);
-            if (j.is_some())
-            {
-                out = std::move(j).unwrap();
-                return true;
-            }
-            return false;
-        }
 
         // ── 目标选择 ────────────────────────────────────────────────────
 
@@ -248,13 +169,7 @@ namespace tkw
             case card::CardEffectKind::Damage:
             {
                 for (const auto &t : targets)
-                {
-                    bool responded = false;
-                    if (eff.response.is_some())
-                        responded = request_response(ctx, ai, t, eff.response.unwrap());
-                    if (!responded)
-                        deal_damage(ctx, ai, player, t, eff.amount);
-                }
+                    resolve_sha(ctx, ai, player, played, t, eff.amount);
                 return GameResult<void>::Ok();
             }
             case card::CardEffectKind::AoeDamage:

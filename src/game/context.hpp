@@ -10,6 +10,8 @@
 #ifndef INCLUDE_TKW_GAME_CONTEXT_HPP
 #define INCLUDE_TKW_GAME_CONTEXT_HPP
 
+#include <random>
+
 #include "card/catalog.hpp"
 #include "card/manager.hpp"
 #include "entity/manager.hpp"
@@ -26,6 +28,7 @@ namespace tkw
             EntityManager *entities = nullptr;
             card::CardManager *cards = nullptr;
             const card::CardDefCatalog *catalog = nullptr;
+            std::mt19937 *rng = nullptr; /**< 判定/洗牌随机源（由对局持有） */
         };
     }
 }

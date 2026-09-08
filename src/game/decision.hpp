@@ -84,6 +84,14 @@ namespace tkw
              */
             virtual bool play_counter(
                 GameContext &ctx, const std::string &player) = 0;
+
+            /**
+             * @brief 装备效果触发：player 是否发动 kind 指定的可选装备效果
+             *       （青龙偃月刀续杀 / 贯石斧弃两牌 / 麒麟弓弃马 / 寒冰剑免伤）。
+             * @note 实现应只在「有牌可弃/有效果可用」时返回 true。
+             */
+            virtual bool trigger_effect(
+                GameContext &ctx, const std::string &player, card::CardEffectKind kind) = 0;
         };
     }
 }

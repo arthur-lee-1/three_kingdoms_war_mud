@@ -64,22 +64,6 @@ namespace tkw
 
         // ── 判定 ────────────────────────────────────────────────────────
 
-        /** @brief 判定：从摸牌堆顶揭示一张（牌堆空则弃牌堆洗回）。 */
-        inline TurnResult<card::Card> perform_judgement(
-            GameContext &ctx, std::mt19937 &rng)
-        {
-            if (ctx.cards->draw_size() == 0)
-            {
-                if (ctx.cards->discard_size() == 0)
-                    return TurnResult<card::Card>::Err(TurnError::JudgeEmptyDeck);
-                ctx.cards->refill_draw(rng);
-            }
-            auto c = ctx.cards->draw();
-            if (c.is_none())
-                return TurnResult<card::Card>::Err(TurnError::JudgeEmptyDeck);
-            return TurnResult<card::Card>::Ok(std::move(c).unwrap());
-        }
-
         /** @brief 下家（按实体迭代序环绕；死亡者已被移除，天然跳过）。 */
         inline std::string next_player(const GameContext &ctx, const std::string &player)
         {
@@ -101,7 +85,6 @@ namespace tkw
          */
         inline TurnResult<DelayedOutcome> resolve_delayed(
             GameContext &ctx, DecisionSource &ai,
-            std::mt19937 &rng,
             const std::string &player,
             const card::Card &delayed)
         {
@@ -115,9 +98,9 @@ namespace tkw
             const card::Card delayed_card =
                 removed.is_some() ? std::move(removed).unwrap() : delayed;
 
-            auto judge = perform_judgement(ctx, rng);
-            if (judge.is_err())
-                return TurnResult<DelayedOutcome>::Err(judge.unwrap_err());
+            auto judge = perform_judgement(ctx);
+            if (judge.is_none())
+                return TurnResult<DelayedOutcome>::Err(TurnError::JudgeEmptyDeck);
             const card::Card judge_card = std::move(judge).unwrap();
             ctx.cards->discard(judge_card);  // 判定牌进弃牌堆
 
@@ -227,7 +210,6 @@ namespace tkw
         inline TurnResult<void> execute_turn(
             GameContext &ctx,
             DecisionSource &ai,
-            std::mt19937 &rng,
             const std::string &player)
         {
             const auto p = ctx.entities->find(player);
@@ -239,7 +221,7 @@ namespace tkw
             const auto judge_zone = ctx.cards->judge(player);  // 拷贝
             for (const auto &delayed : judge_zone)
             {
-                auto r = resolve_delayed(ctx, ai, rng, player, delayed);
+                auto r = resolve_delayed(ctx, ai, player, delayed);
                 if (r.is_err())
                     return TurnResult<void>::Err(r.unwrap_err());
                 if (r.unwrap() == DelayedOutcome::SkipPlay)

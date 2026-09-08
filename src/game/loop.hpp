@@ -66,10 +66,11 @@ namespace tkw
         }
 
         /** @brief 开局准备：构建牌堆 → 洗牌 → 发初始手牌。 */
-        inline void prepare_game(GameContext &ctx, std::mt19937 &rng, int hand = 4)
+        inline void prepare_game(GameContext &ctx, int hand = 4)
         {
             ctx.cards->build_deck(*ctx.catalog);
-            ctx.cards->shuffle_draw(rng);
+            if (ctx.rng)
+                ctx.cards->shuffle_draw(*ctx.rng);
             deal_initial_hands(ctx, hand);
         }
 
@@ -78,19 +79,18 @@ namespace tkw
          * @return Ok(GameOutcome) 或 Err(LoopError)。
          */
         inline LoopResult<GameOutcome> play_game(
-            GameContext &ctx, DecisionSource &ai, std::mt19937 &rng,
-            const std::string &first_player)
+            GameContext &ctx, DecisionSource &ai, const std::string &first_player)
         {
             if (ctx.entities->empty())
                 return LoopResult<GameOutcome>::Err(LoopError::NoPlayers);
 
-            prepare_game(ctx, rng, 4);
+            prepare_game(ctx, 4);
 
             std::string current = first_player;
             int rounds = 0;
             while (ctx.entities->size() > 1)
             {
-                auto r = execute_turn(ctx, ai, rng, current);
+                auto r = execute_turn(ctx, ai, current);
                 if (r.is_err())
                     return LoopResult<GameOutcome>::Err(LoopError::TurnFailed);
                 current = next_player(ctx, current);
