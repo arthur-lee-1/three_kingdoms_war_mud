@@ -54,3 +54,12 @@ target_compile_definitions(
     card_tests PRIVATE TKW_TEST_RESOURCE_DIR="${CMAKE_SOURCE_DIR}/resources")
 
 doctest_discover_tests(card_tests)
+
+add_executable(game_tests test_main.cpp game/game_test.cpp)
+
+target_link_libraries(game_tests PRIVATE tkw_game doctest)
+
+target_compile_definitions(
+    game_tests PRIVATE TKW_TEST_RESOURCE_DIR="${CMAKE_SOURCE_DIR}/resources")
+
+doctest_discover_tests(game_tests)
