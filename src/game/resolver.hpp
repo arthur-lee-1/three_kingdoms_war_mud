@@ -178,108 +178,130 @@ namespace tkw
             if (!is_settleable_kind(eff.kind))
                 return GameResult<void>::Err(EffectError::UnsupportedKind);
 
-            // 打出的牌弃置（若在手牌中）
+            // 打出的牌先移出手牌并弃置（防止结算中被再次选中）；失败回滚
+            bool consumed = false;
             auto played_removed = ctx.cards->remove_from_hand(player, played.instance_id);
             if (played_removed.is_some())
             {
                 ctx.cards->discard(std::move(played_removed).unwrap());
                 emit_card_played(ctx, player, played);
+                consumed = true;
             }
 
             // 无懈可击只抵消锦囊牌；基本牌（杀/闪/桃）不可无懈
             const bool is_trick = def.type == card::CardType::Trick;
             const auto nullified = [&]()
             {
-                return is_trick && resolve_nullification(ctx, ai, player);
+                return is_trick && resolve_nullification(ctx, ai, def, player);
             };
 
-            switch (eff.kind)
+            const auto apply = [&]() -> GameResult<void>
             {
-            case card::CardEffectKind::Damage:
-            {
-                for (const auto &t : targets)
-                    resolve_sha(ctx, ai, player, played, t, eff.amount);
-                return GameResult<void>::Ok();
-            }
-            case card::CardEffectKind::AoeDamage:
-            {
-                for (const auto &t : targets)
+                switch (eff.kind)
                 {
-                    if (nullified())
-                        continue;
-                    bool responded = false;
-                    if (eff.response.is_some())
-                        responded = request_response(ctx, ai, t, eff.response.unwrap());
-                    if (!responded)
-                        deal_damage(ctx, ai, player, t, eff.amount);
-                }
-                return GameResult<void>::Ok();
-            }
-            case card::CardEffectKind::Heal:
-                for (const auto &t : targets)
-                {
-                    if (nullified())
-                        continue;
-                    apply_heal(ctx, t, eff.amount);
-                }
-                return GameResult<void>::Ok();
-            case card::CardEffectKind::Draw:
-                if (nullified())
+                case card::CardEffectKind::Damage:
+                    for (const auto &t : targets)
+                        resolve_sha(ctx, ai, player, played, t, eff.amount);
                     return GameResult<void>::Ok();
-                apply_draw(ctx, player, eff.count);
-                return GameResult<void>::Ok();
-            case card::CardEffectKind::DiscardTarget:
-            {
-                for (const auto &t : targets)
-                {
-                    if (nullified())
-                        continue;
-                    const auto picked = ai.pick_card_from_target(ctx, player, t);
-                    card::Card removed;
-                    if (!remove_card_from_zones(ctx, t, picked.instance_id, removed))
-                        return GameResult<void>::Err(EffectError::InvalidChoice);
-                    ctx.cards->discard(removed);
-                    emit_card_discarded(ctx, t, removed);
-                }
-                return GameResult<void>::Ok();
-            }
-            case card::CardEffectKind::Steal:
-            {
-                for (const auto &t : targets)
-                {
-                    if (nullified())
-                        continue;
-                    const auto picked = ai.pick_card_from_target(ctx, player, t);
-                    card::Card removed;
-                    Zone from = Zone::Limbo;
-                    if (!remove_card_from_zones(ctx, t, picked.instance_id, removed, &from))
-                        return GameResult<void>::Err(EffectError::InvalidChoice);
-                    ctx.cards->add_to_hand(player, removed);
-                    emit_card_moved(ctx, t, player, removed, from, Zone::Hand);
-                }
-                return GameResult<void>::Ok();
-            }
-            case card::CardEffectKind::Duel:
-            {
-                if (nullified())
-                    return GameResult<void>::Ok();
-                // 目标先开始，轮流打出杀；先不出的受对方 1 点伤害。
-                std::string attacker = player;
-                std::string defender = targets.front();
-                for (int round = 0; round < 64; ++round)
-                {
-                    if (!request_response(ctx, ai, defender, card::ResponseKind::Sha))
+
+                case card::CardEffectKind::AoeDamage:
+                    for (const auto &t : targets)
                     {
-                        deal_damage(ctx, ai, attacker, defender, eff.amount);
-                        return GameResult<void>::Ok();
+                        if (nullified())
+                            continue;
+                        bool responded = false;
+                        if (eff.response.is_some())
+                            responded =
+                                request_response(ctx, ai, t, eff.response.unwrap());
+                        if (!responded)
+                            deal_damage(ctx, ai, player, t, eff.amount);
                     }
-                    std::swap(attacker, defender);
+                    return GameResult<void>::Ok();
+
+                case card::CardEffectKind::Heal:
+                    for (const auto &t : targets)
+                    {
+                        if (nullified())
+                            continue;
+                        apply_heal(ctx, t, eff.amount);
+                    }
+                    return GameResult<void>::Ok();
+
+                case card::CardEffectKind::Draw:
+                    if (nullified())
+                        return GameResult<void>::Ok();
+                    apply_draw(ctx, player, eff.count);
+                    return GameResult<void>::Ok();
+
+                case card::CardEffectKind::DiscardTarget:
+                    for (const auto &t : targets)
+                    {
+                        if (nullified())
+                            continue;
+                        const auto picked = ai.pick_card_from_target(ctx, player, t);
+                        if (picked.is_none())
+                            return GameResult<void>::Err(EffectError::InvalidChoice);
+                        card::Card removed;
+                        if (!remove_card_from_zones(
+                                ctx, t, picked.unwrap().instance_id, removed))
+                            return GameResult<void>::Err(EffectError::InvalidChoice);
+                        ctx.cards->discard(removed);
+                        emit_card_discarded(ctx, t, removed);
+                    }
+                    return GameResult<void>::Ok();
+
+                case card::CardEffectKind::Steal:
+                    for (const auto &t : targets)
+                    {
+                        if (nullified())
+                            continue;
+                        const auto picked = ai.pick_card_from_target(ctx, player, t);
+                        if (picked.is_none())
+                            return GameResult<void>::Err(EffectError::InvalidChoice);
+                        card::Card removed;
+                        Zone from = Zone::Limbo;
+                        if (!remove_card_from_zones(
+                                ctx, t, picked.unwrap().instance_id, removed, &from))
+                            return GameResult<void>::Err(EffectError::InvalidChoice);
+                        ctx.cards->add_to_hand(player, removed);
+                        emit_card_moved(ctx, t, player, removed, from, Zone::Hand);
+                    }
+                    return GameResult<void>::Ok();
+
+                case card::CardEffectKind::Duel:
+                    if (nullified())
+                        return GameResult<void>::Ok();
+                    {
+                        // 目标先开始，轮流打出杀；先不出的受对方 1 点伤害。
+                        std::string attacker = player;
+                        std::string defender = targets.front();
+                        for (int round = 0; round < 64; ++round)
+                        {
+                            if (!request_response(
+                                    ctx, ai, defender, card::ResponseKind::Sha))
+                            {
+                                deal_damage(ctx, ai, attacker, defender, eff.amount);
+                                return GameResult<void>::Ok();
+                            }
+                            std::swap(attacker, defender);
+                        }
+                        return GameResult<void>::Err(EffectError::UnsupportedKind);
+                    }
+
+                default:
+                    return GameResult<void>::Err(EffectError::UnsupportedKind);
                 }
-                return GameResult<void>::Err(EffectError::UnsupportedKind);
+            };
+
+            const auto rr = apply();
+            if (rr.is_err() && consumed)
+            {
+                // 结算失败：把打出的牌从弃牌堆取回手牌（事务性）
+                auto back = ctx.cards->remove_from_discard(played.instance_id);
+                if (back.is_some())
+                    ctx.cards->add_to_hand(player, std::move(back).unwrap());
             }
-            default:
-                return GameResult<void>::Err(EffectError::UnsupportedKind);
-            }
+            return rr;
         }
     }
 }

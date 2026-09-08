@@ -76,6 +76,21 @@ namespace tkw
                 return Option<const Card *>::Some(&cards.back());
             }
 
+            /** @brief 按 instance_id 移除一张牌（结算回滚用）；不存在时 None。 */
+            Option<Card> remove(const std::string &instance_id)
+            {
+                for (auto it = cards.begin(); it != cards.end(); ++it)
+                {
+                    if (it->instance_id == instance_id)
+                    {
+                        Card c = std::move(*it);
+                        cards.erase(it);
+                        return Option<Card>::Some(std::move(c));
+                    }
+                }
+                return Option<Card>::None();
+            }
+
             /** @brief Fisher–Yates 原地洗牌（随机源经 Rng 抽象）。 */
             void shuffle(Rng &rng)
             {

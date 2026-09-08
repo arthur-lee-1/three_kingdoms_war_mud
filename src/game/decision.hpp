@@ -25,6 +25,13 @@ namespace tkw
             std::vector<std::string> targets; /**< 目标实体 id（装备牌为空） */
         };
 
+        /** @brief 弃牌的原因（同一接口在不同规则语境下的区分）。 */
+        enum class DiscardReason : std::uint8_t
+        {
+            TurnLimit,   /**< 弃牌阶段：手牌超上限 */
+            AbilityCost, /**< 装备能力代价（如贯石斧弃两张） */
+        };
+
         /**
          * @class DecisionSource
          * @brief 结算/回合期间的玩家决策接口。
@@ -46,10 +53,10 @@ namespace tkw
 
             /**
              * @brief 从目标区域选一张牌（过河拆桥弃置 / 顺手牵羊获得）。
-             * @return 选中的牌（须存在于 target 的某个区域；结算器按其
-             *         instance_id 移除并决定弃置或收入手牌）。
+             * @return 选中的牌；None = 放弃/无可选（结算器按规则处理，不再
+             *         依赖默认构造的牌）。
              */
-            virtual card::Card pick_card_from_target(
+            virtual Option<card::Card> pick_card_from_target(
                 GameContext &ctx,
                 const std::string &source,
                 const std::string &target) = 0;
@@ -63,11 +70,12 @@ namespace tkw
                 GameContext &ctx, const std::string &player) = 0;
 
             /**
-             * @brief 弃牌阶段：弃置 count 张手牌。
+             * @brief 弃牌阶段/能力代价：弃置 count 张手牌。
              * @note 回合流程按 count 逐张校验并弃置；数量不符/引用不存在会报错。
              */
             virtual std::vector<std::string> choose_discards(
-                GameContext &ctx, const std::string &player, int count) = 0;
+                GameContext &ctx, const std::string &player, int count,
+                DiscardReason reason) = 0;
 
             /**
              * @brief 濒死救场：saver 是否对濒死的 dying 打出一张桃。

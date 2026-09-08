@@ -78,8 +78,11 @@ namespace tkw
             for (int i = 0; i < count; ++i)
             {
                 const auto picked = ai.pick_card_from_target(ctx, attacker, target);
+                if (picked.is_none())
+                    break;
                 card::Card removed;
-                if (remove_card_from_zones(ctx, target, picked.instance_id, removed))
+                if (remove_card_from_zones(
+                        ctx, target, picked.unwrap().instance_id, removed))
                 {
                     ctx.cards->discard(removed);
                     emit_card_discarded(ctx, target, removed);
@@ -164,7 +167,8 @@ namespace tkw
             if (!sc.ai.trigger_effect(
                     sc.ctx, sc.attacker, card::Ability::DiscardTwoForceDamage))
                 return;
-            const auto discards = sc.ai.choose_discards(sc.ctx, sc.attacker, 2);
+            const auto discards = sc.ai.choose_discards(
+                sc.ctx, sc.attacker, 2, DiscardReason::AbilityCost);
             for (const auto &id : discards)
             {
                 auto removed = sc.ctx.cards->remove_from_hand(sc.attacker, id);

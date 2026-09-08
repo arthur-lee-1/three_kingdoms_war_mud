@@ -114,13 +114,14 @@ namespace tkw
                        triggers.end();
             }
 
-            Card pick_card_from_target(
+            Option<card::Card> pick_card_from_target(
                 GameContext &ctx, const std::string &,
                 const std::string &target) override
             {
                 const auto &hand = ctx.cards->hand(target);
-                REQUIRE(!hand.empty());
-                return hand.front();
+                if (hand.empty())
+                    return Option<card::Card>::None();
+                return Option<card::Card>::Some(hand.front());
             }
 
             Option<PlayAction> choose_play(GameContext &, const std::string &) override
@@ -131,7 +132,8 @@ namespace tkw
             }
 
             std::vector<std::string> choose_discards(
-                GameContext &ctx, const std::string &player, int count) override
+                GameContext &ctx, const std::string &player, int count,
+                DiscardReason) override
             {
                 const auto &hand = ctx.cards->hand(player);
                 std::vector<std::string> out;

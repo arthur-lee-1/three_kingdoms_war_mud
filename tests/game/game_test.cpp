@@ -218,6 +218,22 @@ TEST_CASE("game: guohe discards target card")
     CHECK(g.cards.discard_size() == 2);   // 过河拆桥 + 被弃的牌
 }
 
+TEST_CASE("game: failed pick rolls back the played card")
+{
+    TestGame g("deck");
+    g.add_player("a", 0, 4);
+    g.add_player("b", 1, 4);
+    g.give("a", "guohe", "g#0");  // b 无牌 → pick 返回 None
+
+    TestDecider decider;
+    const auto played = g.cards.hand("a")[0];
+    auto r = resolve_play(g.ctx, decider, "a", played, {"b"});
+    REQUIRE(r.is_err());
+    CHECK(r.unwrap_err() == EffectError::InvalidChoice);
+    CHECK(g.cards.hand_size("a") == 1);  // 打出的过河拆桥被取回
+    CHECK(g.cards.discard_size() == 0);
+}
+
 TEST_CASE("game: shunshou steals target card to hand")
 {
     TestGame g("deck");

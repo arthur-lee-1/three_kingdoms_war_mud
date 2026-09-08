@@ -264,15 +264,13 @@ namespace tkw
                             return TurnResult<void>::Err(TurnError::ShaLimitExceeded);
                     }
 
-                    const auto valid = valid_targets(ctx, player, def);
-                    for (const auto &t : action.unwrap().targets)
-                        if (std::find(valid.begin(), valid.end(), t) == valid.end())
-                            return TurnResult<void>::Err(TurnError::InvalidTarget);
-
                     auto rr = resolve_play(
                         ctx, ai, player, card.unwrap(), action.unwrap().targets);
                     if (rr.is_err())
-                        return TurnResult<void>::Err(TurnError::PlayRejected);
+                        return TurnResult<void>::Err(
+                            rr.unwrap_err() == EffectError::OutOfRange
+                                ? TurnError::InvalidTarget
+                                : TurnError::PlayRejected);
                     if (is_sha(def))
                         ++sha_played;
                 }
@@ -283,7 +281,8 @@ namespace tkw
             const int over = static_cast<int>(ctx.cards->hand_size(player)) - hand_limit;
             if (over > 0)
             {
-                const auto discards = ai.choose_discards(ctx, player, over);
+                const auto discards =
+                    ai.choose_discards(ctx, player, over, DiscardReason::TurnLimit);
                 if (static_cast<int>(discards.size()) != over)
                     return TurnResult<void>::Err(TurnError::DiscardInsufficient);
                 for (const auto &id : discards)

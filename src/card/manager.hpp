@@ -64,6 +64,12 @@ namespace tkw
             /** @brief 弃牌（置弃牌堆顶）。 */
             void discard(Card card) { discard_pile.push(std::move(card)); }
 
+            /** @brief 从弃牌堆取回一张牌（结算回滚用）；不存在时 None。 */
+            Option<Card> remove_from_discard(const std::string &instance_id)
+            {
+                return discard_pile.remove(instance_id);
+            }
+
             /** @brief 置摸牌堆顶（种牌堆/结算后回置等）。 */
             void add_to_draw(Card card) { draw_pile.push(std::move(card)); }
 

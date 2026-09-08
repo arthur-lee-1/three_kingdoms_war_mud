@@ -53,17 +53,17 @@ namespace tkw
                 return true;
             }
 
-            card::Card pick_card_from_target(
+            Option<card::Card> pick_card_from_target(
                 GameContext &ctx, const std::string &,
                 const std::string &target) override
             {
                 if (!ctx.cards->hand(target).empty())
-                    return ctx.cards->hand(target).front();
+                    return Option<card::Card>::Some(ctx.cards->hand(target).front());
                 if (!ctx.cards->equip(target).empty())
-                    return ctx.cards->equip(target).front();
+                    return Option<card::Card>::Some(ctx.cards->equip(target).front());
                 if (!ctx.cards->judge(target).empty())
-                    return ctx.cards->judge(target).front();
-                return card::Card{};
+                    return Option<card::Card>::Some(ctx.cards->judge(target).front());
+                return Option<card::Card>::None();
             }
 
             Option<PlayAction> choose_play(
@@ -138,7 +138,8 @@ namespace tkw
             }
 
             std::vector<std::string> choose_discards(
-                GameContext &ctx, const std::string &player, int count) override
+                GameContext &ctx, const std::string &player, int count,
+                DiscardReason) override
             {
                 std::vector<std::string> out;
                 for (const auto &c : ctx.cards->hand(player))

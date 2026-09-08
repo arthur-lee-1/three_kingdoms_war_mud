@@ -86,12 +86,18 @@ namespace tkw
 
         /**
          * @brief 无懈响应窗口（链式）。
+         * @param trick 被结算的锦囊定义（规则扩展缝：将来可按锦囊/目标定制
+         *        可无懈性；当前实现只用它做语义占位）。
          * @param start 从该玩家起按座位序询问（= 使用锦囊的玩家）。
          * @return true = 被无懈抵消（奇数张无懈）。
+         * @note 窗口粒度 = 每个受影响目标一次（调用方按目标调用）；这是
+         *       现行规则的简化，官方规则以目标为单位的表述等价于此。
          */
         inline bool resolve_nullification(
-            GameContext &ctx, DecisionSource &ai, const std::string &start)
+            GameContext &ctx, DecisionSource &ai, const card::CardDef &trick,
+            const std::string &start)
         {
+            (void)trick;
             const auto order = seat_order_from(ctx, start);
             bool cancelled = false;
             for (int round = 0; round < 32; ++round)
