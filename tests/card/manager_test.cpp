@@ -133,6 +133,11 @@ TEST_CASE("card: build_deck materialises every copy of every def")
     CHECK(mgr.draw_size() == 108);
     CHECK(mgr.discard_size() == 0);
 
+    // 牌堆顺序 = deck.json 引用顺序（堆顶 = 末张卡的最后一份副本）
+    auto top = mgr.draw_top();
+    REQUIRE(top.is_some());
+    CHECK(top.unwrap()->def_id == "zhuahuang");
+
     std::vector<std::string> ids;
     std::unordered_map<std::string, int> drawn;
     for (std::size_t i = 0; i < 108; ++i)
@@ -149,7 +154,7 @@ TEST_CASE("card: build_deck materialises every copy of every def")
     CHECK(std::adjacent_find(ids.begin(), ids.end()) == ids.end());
 
     // 每张定义的实体牌数量 == 其 copies 数
-    for (const auto &[def_id, def] : cat)
-        CHECK(drawn[def_id] == static_cast<int>(def.copies.size()));
+    for (const auto &def : cat)
+        CHECK(drawn[def.id] == static_cast<int>(def.copies.size()));
 }
 #endif  // TKW_TEST_RESOURCE_DIR

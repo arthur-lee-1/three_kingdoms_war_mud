@@ -1,6 +1,7 @@
 #include <doctest/doctest.h>
 
 #include <filesystem>
+#include <iterator>
 #include <string>
 
 #include <pjh_json/document.hpp>
@@ -174,6 +175,14 @@ TEST_CASE("card: catalog loads deck + card files")
     CHECK(sha.unwrap()->name == "杀");
     CHECK(sha.unwrap()->copies.size() == 1);
     CHECK(r.unwrap().find("nope").is_none());
+
+    // 迭代顺序 = deck.json 引用顺序（["sha", "chitu"]），不得退化为无序
+    const auto &cat = r.unwrap();
+    auto it = cat.begin();
+    CHECK(it->id == "sha");
+    ++it;
+    CHECK(it->id == "chitu");
+    CHECK(std::next(it) == cat.end());
 }
 
 TEST_CASE("card: catalog load error paths")
@@ -233,6 +242,13 @@ TEST_CASE("card: real standard deck loads to 108 copies")
     const auto &cat = r.unwrap();
     CHECK(cat.size() == 32);
     CHECK(cat.total_copies() == 108);
+
+    // 迭代顺序 = deck.json 引用顺序（首张 sha，末张 zhuahuang）
+    CHECK(cat.begin()->id == "sha");
+    std::string last_id;
+    for (const auto &def : cat)
+        last_id = def.id;
+    CHECK(last_id == "zhuahuang");
 
     auto sha = cat.find("sha");
     REQUIRE(sha.is_some());

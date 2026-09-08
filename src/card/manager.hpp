@@ -43,13 +43,16 @@ namespace tkw
             CardManager(CardManager &&) noexcept = default;
             CardManager &operator=(CardManager &&) noexcept = default;
 
-            /** @brief 按目录构建摸牌堆：每份副本生成一张实体牌并分配唯一 instance_id。 */
+            /**
+             * @brief 按目录构建摸牌堆：每份副本生成一张实体牌并分配唯一 instance_id。
+             * @note 卡牌顺序 = 目录迭代序（deck.json 引用顺序），同 seed 下确定。
+             */
             void build_deck(const CardDefCatalog &catalog)
             {
-                for (const auto &[def_id, def] : catalog)
+                for (const auto &def : catalog)
                 {
                     for (const auto &copy : def.copies)
-                        draw_pile.push(make_card(def_id, copy));
+                        draw_pile.push(make_card(def.id, copy));
                 }
             }
 

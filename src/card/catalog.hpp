@@ -323,9 +323,12 @@ namespace tkw
 
         /**
          * @class CardDefCatalog
-         * @brief 对局作用域的卡牌定义容器（id → CardDef）。
+         * @brief 对局作用域的卡牌定义容器：deck.json 引用的有序定义 + id 索引。
          * @note 一次加载后不可变：实体牌（Card）引用其 def_id 或拷贝副本，
          *       目录本身不参与对局状态变化。
+         * @note 迭代顺序 = deck.json 引用顺序（**不是无序**）：build_deck 等
+         *       消费者依赖该顺序，保证同 seed 下牌堆初始序确定；id 查询
+         *       走内部索引（O(1)），与迭代序无关。
          */
         class CardDefCatalog
         {
@@ -356,7 +359,7 @@ namespace tkw
                             cfg::ConfigErrorKind::TypeMismatch, std::string(ip));
                     const std::string cid(*id_s);
 
-                    if (catalog.defs.find(cid) != catalog.defs.end())
+                    if (catalog.index.find(cid) != catalog.index.end())
                         return fail<void>(
                             cfg::ConfigErrorKind::InvalidValue,
                             std::string(ip) + " 重复引用卡牌 " + cid);
@@ -374,7 +377,8 @@ namespace tkw
                         return fail<void>(
                             cfg::ConfigErrorKind::InvalidValue, file + ".id");
 
-                    catalog.defs.emplace(cid, std::move(def).unwrap());
+                    catalog.index.emplace(cid, catalog.defs.size());
+                    catalog.defs.push_back(std::move(def).unwrap());
                     return cfg::ConfigResult<void>::Ok();
                 });
                 if (er.is_err())
@@ -382,13 +386,13 @@ namespace tkw
                 return cfg::ConfigResult<CardDefCatalog>::Ok(std::move(catalog));
             }
 
-            /** @brief O(1) 按卡牌 id 查询；不存在时为 None。 */
+            /** @brief O(1) 按卡牌 id 查询（经内部索引）；不存在时为 None。 */
             Option<const CardDef *> find(const std::string &id) const
             {
-                auto it = defs.find(id);
-                if (it == defs.end())
+                auto it = index.find(id);
+                if (it == index.end())
                     return Option<const CardDef *>::None();
-                return Option<const CardDef *>::Some(&it->second);
+                return Option<const CardDef *>::Some(&defs[it->second]);
             }
 
             std::size_t size() const noexcept { return defs.size(); }
@@ -397,16 +401,18 @@ namespace tkw
             std::size_t total_copies() const noexcept
             {
                 std::size_t n = 0;
-                for (const auto &[id, def] : defs)
+                for (const auto &def : defs)
                     n += def.copies.size();
                 return n;
             }
 
+            /** @brief 按 deck.json 引用顺序迭代。 */
             auto begin() const noexcept { return defs.begin(); }
             auto end() const noexcept { return defs.end(); }
 
         private:
-            std::unordered_map<std::string, CardDef> defs;
+            std::vector<CardDef> defs; /**< deck.json 引用顺序（build_deck 等依赖此序） */
+            std::unordered_map<std::string, std::size_t> index; /**< id → defs 下标 */
         };
     }
 }
