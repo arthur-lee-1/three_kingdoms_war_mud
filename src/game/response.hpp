@@ -14,6 +14,7 @@
 #include "card/catalog.hpp"
 #include "card/def.hpp"
 #include "card/manager.hpp"
+#include "game/card_event.hpp"
 #include "game/context.hpp"
 #include "game/decision.hpp"
 #include "util/types.hpp"
@@ -70,7 +71,11 @@ namespace tkw
                 {
                     auto removed = ctx.cards->remove_from_hand(entity_id, c.instance_id);
                     if (removed.is_some())
-                        ctx.cards->discard(std::move(removed).unwrap());
+                    {
+                        card::Card card = std::move(removed).unwrap();
+                        ctx.cards->discard(card);
+                        emit_card_discarded(ctx, entity_id, card);
+                    }
                     return true;
                 }
             }

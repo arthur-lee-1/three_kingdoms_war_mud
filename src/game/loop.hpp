@@ -18,6 +18,7 @@
 #include "entity/manager.hpp"
 #include "game/context.hpp"
 #include "game/decision.hpp"
+#include "game/state.hpp"
 #include "game/turn.hpp"
 #include "util/types.hpp"
 
@@ -49,19 +50,11 @@ namespace tkw
             return ctx.entities->size();
         }
 
-        /** @brief 每名存活玩家发 count 张初始手牌（从堆顶摸）。 */
+        /** @brief 每名存活玩家发 count 张初始手牌（从堆顶摸，发布摸牌事件）。 */
         inline void deal_initial_hands(GameContext &ctx, int count = 4)
         {
             for (const auto &ent : *ctx.entities)
-            {
-                for (int i = 0; i < count; ++i)
-                {
-                    auto c = ctx.cards->draw();
-                    if (c.is_none())
-                        break;
-                    ctx.cards->add_to_hand(ent->get_id(), std::move(c).unwrap());
-                }
-            }
+                apply_draw(ctx, ent->get_id(), count);
         }
 
         /** @brief 开局准备：构建牌堆 → 洗牌 → 发初始手牌。 */

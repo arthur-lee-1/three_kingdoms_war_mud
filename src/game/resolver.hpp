@@ -139,12 +139,13 @@ namespace tkw
 
         /**
          * @brief 结算「player 打出 played 牌，指定 targets」。
-         * @note 校验失败（未知卡/越范围/未实现/空目标）不消耗该牌；
+         * @note played 按值传入：结算过程会把该牌移出手牌，引用会失效。
+         *       校验失败（未知卡/越范围/未实现/空目标）不消耗该牌；
          *       校验通过后先把打出的牌弃置，再应用效果。
          */
         inline GameResult<void> resolve_play(
             GameContext &ctx, DecisionSource &ai, const std::string &player,
-            const card::Card &played, const std::vector<std::string> &targets)
+            card::Card played, const std::vector<std::string> &targets)
         {
             const auto def_opt = ctx.catalog->find(played.def_id);
             if (def_opt.is_none())
@@ -177,7 +178,10 @@ namespace tkw
             // 打出的牌弃置（若在手牌中）
             auto played_removed = ctx.cards->remove_from_hand(player, played.instance_id);
             if (played_removed.is_some())
+            {
                 ctx.cards->discard(std::move(played_removed).unwrap());
+                emit_card_played(ctx, player, played);
+            }
 
             // 无懈可击只抵消锦囊牌；基本牌（杀/闪/桃）不可无懈
             const bool is_trick = def.type == card::CardType::Trick;
@@ -231,7 +235,8 @@ namespace tkw
                     card::Card removed;
                     if (!remove_card_from_zones(ctx, t, picked.instance_id, removed))
                         return GameResult<void>::Err(EffectError::InvalidChoice);
-                    ctx.cards->discard(std::move(removed));
+                    ctx.cards->discard(removed);
+                    emit_card_discarded(ctx, t, removed);
                 }
                 return GameResult<void>::Ok();
             }
@@ -243,9 +248,11 @@ namespace tkw
                         continue;
                     const auto picked = ai.pick_card_from_target(ctx, player, t);
                     card::Card removed;
-                    if (!remove_card_from_zones(ctx, t, picked.instance_id, removed))
+                    Zone from = Zone::Limbo;
+                    if (!remove_card_from_zones(ctx, t, picked.instance_id, removed, &from))
                         return GameResult<void>::Err(EffectError::InvalidChoice);
-                    ctx.cards->add_to_hand(player, std::move(removed));
+                    ctx.cards->add_to_hand(player, removed);
+                    emit_card_moved(ctx, t, player, removed, from, Zone::Hand);
                 }
                 return GameResult<void>::Ok();
             }

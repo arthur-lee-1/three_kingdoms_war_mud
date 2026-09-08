@@ -56,7 +56,10 @@ namespace tkw
                 const auto picked = ai.pick_card_from_target(ctx, attacker, target);
                 card::Card removed;
                 if (remove_card_from_zones(ctx, target, picked.instance_id, removed))
-                    ctx.cards->discard(std::move(removed));
+                {
+                    ctx.cards->discard(removed);
+                    emit_card_discarded(ctx, target, removed);
+                }
             }
         }
 
@@ -71,7 +74,11 @@ namespace tkw
                 {
                     auto removed = ctx.cards->remove_from_equip(target, c.instance_id);
                     if (removed.is_some())
-                        ctx.cards->discard(std::move(removed).unwrap());
+                    {
+                        card::Card card = std::move(removed).unwrap();
+                        ctx.cards->discard(card);
+                        emit_card_discarded(ctx, target, card);
+                    }
                     return true;
                 }
             }
@@ -106,6 +113,7 @@ namespace tkw
                 {
                     const card::Card judge_card = std::move(judge).unwrap();
                     ctx.cards->discard(judge_card);  // 判定牌进弃牌堆
+                    emit_card_discarded(ctx, target, judge_card);
                     if (is_red_suit(judge_card.suit))
                         responded = true;
                 }
@@ -123,7 +131,12 @@ namespace tkw
                 {
                     auto removed = ctx.cards->remove_from_hand(attacker, extra.unwrap().instance_id);
                     if (removed.is_some())
-                        ctx.cards->discard(std::move(removed).unwrap());
+                    {
+                        card::Card extra_card = std::move(removed).unwrap();
+                        ctx.cards->discard(extra_card);
+                        emit_card_played(ctx, attacker, extra_card);
+                        emit_card_discarded(ctx, attacker, extra_card);
+                    }
                     resolve_sha(ctx, ai, attacker, extra.unwrap(), target, amount);
                 }
             }
@@ -138,7 +151,11 @@ namespace tkw
                 {
                     auto removed = ctx.cards->remove_from_hand(attacker, id);
                     if (removed.is_some())
-                        ctx.cards->discard(std::move(removed).unwrap());
+                    {
+                        card::Card card = std::move(removed).unwrap();
+                        ctx.cards->discard(card);
+                        emit_card_discarded(ctx, attacker, card);
+                    }
                 }
                 responded = false;  // 强制命中
             }

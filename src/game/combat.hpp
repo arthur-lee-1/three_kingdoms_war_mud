@@ -49,7 +49,7 @@ namespace tkw
             return false;
         }
 
-        /** @brief 消耗玩家手牌中的一张桃（移除+弃置）。 */
+        /** @brief 消耗玩家手牌中的一张桃（移除+弃置+事件）。 */
         inline bool consume_peach(GameContext &ctx, const std::string &player)
         {
             for (const auto &c : ctx.cards->hand(player))
@@ -59,7 +59,11 @@ namespace tkw
                 {
                     auto removed = ctx.cards->remove_from_hand(player, c.instance_id);
                     if (removed.is_some())
-                        ctx.cards->discard(std::move(removed).unwrap());
+                    {
+                        card::Card card = std::move(removed).unwrap();
+                        ctx.cards->discard(card);
+                        emit_card_discarded(ctx, player, card);
+                    }
                     return true;
                 }
             }
@@ -69,7 +73,8 @@ namespace tkw
         /** @brief 死亡清场：手牌/装备/判定区全部置入弃牌堆，移除实体并发布死亡事件。 */
         inline void declare_death(GameContext &ctx, const std::string &player)
         {
-            ctx.cards->discard_all(player);
+            for (const auto &c : ctx.cards->discard_all(player))
+                emit_card_discarded(ctx, player, c);
             auto ev = std::make_shared<EntityDiedEvent>();
             ev->entity_id = player;
             ctx.bus->publish(ev);

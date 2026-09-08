@@ -13,6 +13,7 @@
 #include "entity/hp.hpp"
 #include "entity/manager.hpp"
 #include "event/event_bus.hpp"
+#include "game/card_event.hpp"
 #include "game/context.hpp"
 #include "game/decision.hpp"
 #include "game/distance.hpp"
@@ -816,6 +817,64 @@ TEST_CASE("game: unsupported deck cards are reported")
     TestGame g("deck");
     CHECK(unsupported_cards(g.catalog) ==
           std::vector<std::string>({"lesi", "shandian", "jiedao", "wugu"}));
+}
+
+TEST_CASE("game: draw emits CardDrawn per card")
+{
+    TestGame g("deck");
+    g.add_player("a", 0, 4);
+    g.cards.build_deck(g.catalog);
+
+    int drawn = 0;
+    auto h = g.bus.subscribe(tkw::Handler<tkw::CardDrawnEvent>(
+        [&](tkw::HandlerContext<tkw::CardDrawnEvent> &) { ++drawn; }));
+
+    apply_draw(g.ctx, "a", 3);
+    CHECK(drawn == 3);
+    CHECK(g.cards.hand_size("a") == 3);
+}
+
+TEST_CASE("game: turn emits draw then discard events in order")
+{
+    TestGame g("deck");
+    g.add_player("a", 0, 3);  // 手牌上限 3
+    g.add_player("b", 1, 4);
+    g.cards.build_deck(g.catalog);
+    g.give("a", "sha", "s#1");
+    g.give("a", "sha", "s#2");
+    g.give("a", "shan", "s#3");
+
+    std::vector<std::string> log;
+    auto h1 = g.bus.subscribe(tkw::Handler<tkw::CardDrawnEvent>(
+        [&](tkw::HandlerContext<tkw::CardDrawnEvent> &) { log.push_back("draw"); }));
+    auto h2 = g.bus.subscribe(tkw::Handler<tkw::CardDiscardedEvent>(
+        [&](tkw::HandlerContext<tkw::CardDiscardedEvent> &) { log.push_back("discard"); }));
+    auto h3 = g.bus.subscribe(tkw::Handler<tkw::CardPlayedEvent>(
+        [&](tkw::HandlerContext<tkw::CardPlayedEvent> &) { log.push_back("play"); }));
+
+    TestDecider decider;  // 不出牌
+    auto r = execute_turn(g.ctx, decider, "a");
+    REQUIRE(r.is_ok());
+    CHECK(log == std::vector<std::string>{"draw", "draw", "discard", "discard"});
+}
+
+TEST_CASE("game: playing a card emits CardPlayed")
+{
+    TestGame g("deck");
+    g.add_player("a", 0, 4);
+    auto *b = g.add_player("b", 1, 4);
+    g.give("a", "sha", "s#1");
+
+    std::vector<std::string> played;
+    auto h = g.bus.subscribe(tkw::Handler<tkw::CardPlayedEvent>(
+        [&](tkw::HandlerContext<tkw::CardPlayedEvent> &c)
+        { played.push_back(c.event.def_id); }));
+
+    TestDecider decider;
+    auto r = resolve_play(g.ctx, decider, "a", g.cards.hand("a")[0], {"b"});
+    REQUIRE(r.is_ok());
+    CHECK(played == std::vector<std::string>{"sha"});
+    CHECK(b->get_hp() == 3);
 }
 
 TEST_CASE("game: play_game ends when one player kills the other")

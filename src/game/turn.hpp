@@ -103,10 +103,12 @@ namespace tkw
                 return TurnResult<DelayedOutcome>::Err(TurnError::JudgeEmptyDeck);
             const card::Card judge_card = std::move(judge).unwrap();
             ctx.cards->discard(judge_card);  // 判定牌进弃牌堆
+            emit_card_discarded(ctx, player, judge_card);
 
             if (eff.is_none())
             {
                 ctx.cards->discard(delayed_card);
+                emit_card_discarded(ctx, player, delayed_card);
                 return TurnResult<DelayedOutcome>::Ok(DelayedOutcome::Normal);
             }
 
@@ -115,6 +117,7 @@ namespace tkw
             case card::CardEffectKind::DelayedPlaySkip:
                 // 乐不思蜀：非红桃 → 跳过出牌阶段
                 ctx.cards->discard(delayed_card);
+                emit_card_discarded(ctx, player, delayed_card);
                 if (judge_card.suit != card::Suit::Heart)
                     return TurnResult<DelayedOutcome>::Ok(DelayedOutcome::SkipPlay);
                 return TurnResult<DelayedOutcome>::Ok(DelayedOutcome::Normal);
@@ -126,17 +129,22 @@ namespace tkw
                 if (struck)
                 {
                     ctx.cards->discard(delayed_card);
+                    emit_card_discarded(ctx, player, delayed_card);
                     deal_damage(ctx, ai, "闪电", player, eff.unwrap().amount);
                     return TurnResult<DelayedOutcome>::Ok(
                         DelayedOutcome::LightningStruck);
                 }
                 // 未劈中 → 移入下家判定区
-                ctx.cards->add_to_judge(next_player(ctx, player), delayed_card);
+                const std::string next = next_player(ctx, player);
+                ctx.cards->add_to_judge(next, delayed_card);
+                emit_card_moved(
+                    ctx, player, next, delayed_card, Zone::Judge, Zone::Judge);
                 return TurnResult<DelayedOutcome>::Ok(DelayedOutcome::PassedToNext);
             }
 
             default:
                 ctx.cards->discard(delayed_card);
+                emit_card_discarded(ctx, player, delayed_card);
                 return TurnResult<DelayedOutcome>::Ok(DelayedOutcome::Normal);
             }
         }
@@ -188,14 +196,20 @@ namespace tkw
                 {
                     auto old = ctx.cards->remove_from_equip(player, c.instance_id);
                     if (old.is_some())
-                        ctx.cards->discard(std::move(old).unwrap());
+                    {
+                        card::Card old_card = std::move(old).unwrap();
+                        ctx.cards->discard(old_card);
+                        emit_card_discarded(ctx, player, old_card);
+                    }
                 }
             }
 
             auto removed = ctx.cards->remove_from_hand(player, card.instance_id);
             if (removed.is_none())
                 return TurnResult<void>::Err(TurnError::CardNotInHand);
-            ctx.cards->add_to_equip(player, std::move(removed).unwrap());
+            ctx.cards->add_to_equip(player, card);
+            emit_card_played(ctx, player, card);
+            emit_card_moved(ctx, player, player, card, Zone::Hand, Zone::Equip);
             return TurnResult<void>::Ok();
         }
 
@@ -291,7 +305,9 @@ namespace tkw
                     auto removed = ctx.cards->remove_from_hand(player, id);
                     if (removed.is_none())
                         return TurnResult<void>::Err(TurnError::DiscardInsufficient);
-                    ctx.cards->discard(std::move(removed).unwrap());
+                    card::Card card = std::move(removed).unwrap();
+                    ctx.cards->discard(card);
+                    emit_card_discarded(ctx, player, card);
                 }
             }
             return TurnResult<void>::Ok();

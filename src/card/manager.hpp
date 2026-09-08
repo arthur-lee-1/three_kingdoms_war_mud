@@ -163,21 +163,27 @@ namespace tkw
 
             /**
              * @brief 死亡清场：手牌/装备/判定区全部置入弃牌堆。
+             * @return 被弃置的牌（供调用方发布弃置事件）。
              */
-            void discard_all(const std::string &entity_id)
+            std::vector<Card> discard_all(const std::string &entity_id)
             {
-                auto drain = [this, &entity_id](auto &zone)
+                std::vector<Card> out;
+                auto drain = [this, &entity_id, &out](auto &zone)
                 {
                     auto it = zone.find(entity_id);
                     if (it == zone.end())
                         return;
                     for (auto &c : it->second)
+                    {
+                        out.push_back(c);
                         discard_pile.push(std::move(c));
+                    }
                     zone.erase(it);
                 };
                 drain(hand_zone);
                 drain(equip_zone);
                 drain(judge_zone);
+                return out;
             }
 
         private:

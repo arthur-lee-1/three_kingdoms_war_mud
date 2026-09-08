@@ -1,8 +1,8 @@
 /**
  * @file state.hpp
  * @brief 对局状态的基础操作：扣血/回血/摸牌（不含濒死死亡，那些归 combat.hpp）。
- * @note 这些是「状态层」原语：只改实体状态与牌堆，不发布流程事件、
- *       不处理死亡。伤害→濒死→死亡的流程归 combat.hpp 的 deal_damage。
+ * @note 这些是「状态层」原语：只改实体状态与牌堆，不发布流程事件（濒死/死亡），
+ *       但会发布卡牌域事件（如摸牌）供日志/回放消费。
  */
 
 #ifndef INCLUDE_TKW_GAME_STATE_HPP
@@ -14,6 +14,7 @@
 #include "card/def.hpp"
 #include "card/manager.hpp"
 #include "entity/manager.hpp"
+#include "game/card_event.hpp"
 #include "game/context.hpp"
 #include "util/types.hpp"
 
@@ -60,33 +61,42 @@ namespace tkw
                 auto c = ctx.cards->draw();
                 if (c.is_none())
                     break;
-                ctx.cards->add_to_hand(player, std::move(c).unwrap());
+                card::Card card = std::move(c).unwrap();
+                ctx.cards->add_to_hand(player, card);
+                emit_card_drawn(ctx, player, card);
                 ++drew;
             }
             return drew;
         }
 
-        /** @brief 从某实体的任一区域移除指定牌（填 out 返回被移除的牌）。 */
+        /** @brief 从某实体的任一区域移除指定牌（填 out 返回被移除的牌与来源区域）。 */
         inline bool remove_card_from_zones(
             GameContext &ctx, const std::string &entity_id,
-            const std::string &instance_id, card::Card &out)
+            const std::string &instance_id, card::Card &out,
+            Zone *from_zone = nullptr)
         {
             auto h = ctx.cards->remove_from_hand(entity_id, instance_id);
             if (h.is_some())
             {
                 out = std::move(h).unwrap();
+                if (from_zone)
+                    *from_zone = Zone::Hand;
                 return true;
             }
             auto e = ctx.cards->remove_from_equip(entity_id, instance_id);
             if (e.is_some())
             {
                 out = std::move(e).unwrap();
+                if (from_zone)
+                    *from_zone = Zone::Equip;
                 return true;
             }
             auto j = ctx.cards->remove_from_judge(entity_id, instance_id);
             if (j.is_some())
             {
                 out = std::move(j).unwrap();
+                if (from_zone)
+                    *from_zone = Zone::Judge;
                 return true;
             }
             return false;
