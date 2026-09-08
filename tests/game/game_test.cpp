@@ -1,5 +1,7 @@
 #include <doctest/doctest.h>
 
+#include <cstdint>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -16,6 +18,7 @@
 #include "game/distance.hpp"
 #include "game/loop.hpp"
 #include "game/resolver.hpp"
+#include "game/table.hpp"
 #include "game/turn.hpp"
 #include "util/rng.hpp"
 
@@ -33,25 +36,15 @@ namespace
     using tkw::entity::Entity;
     using tkw::entity::Hp;
 
-    /** 测试对局：bus + entities + cards + catalog + ctx 聚合。 */
-    struct TestGame
+    /** 测试对局：Game 应用层 + 测试辅助（发牌/装备）。 */
+    struct TestGame : Game
     {
-        tkw::EventBus bus;
-        EntityManager entities;
-        CardManager cards;
-        CardDefCatalog catalog;
-        tkw::SeededRng rng{1};
         GameContext ctx;
 
-        TestGame(const char *deck_name) :
-            bus(), entities(bus), cards(),
-            catalog(load_catalog(deck_name))
+        explicit TestGame(const char *deck_name, std::uint32_t seed = 1) :
+            Game(load_catalog(deck_name), std::make_unique<tkw::SeededRng>(seed)),
+            ctx(context())
         {
-            ctx.bus = &bus;
-            ctx.entities = &entities;
-            ctx.cards = &cards;
-            ctx.catalog = &catalog;
-            ctx.rng = &rng;
         }
 
         Entity *add_player(const std::string &id, int seat, int hp)
@@ -788,6 +781,33 @@ TEST_CASE("game: prepare_game deals four initial cards to each")
     CHECK(g.cards.hand_size("b") == 4);
     CHECK(g.cards.draw_size() == 108 - 8);
     CHECK(alive_count(g.ctx) == 2);
+}
+
+TEST_CASE("game: same seed yields identical deal, different seed differs")
+{
+    auto setup = [](TestGame &g)
+    {
+        for (int s = 0; s < 4; ++s)
+            g.add_player("p" + std::to_string(s), s, 4);
+        prepare_game(g.ctx, 4);
+    };
+
+    TestGame a("deck", 7);
+    TestGame b("deck", 7);
+    TestGame c("deck", 8);
+    setup(a);
+    setup(b);
+    setup(c);
+
+    bool differs = false;
+    for (int s = 0; s < 4; ++s)
+    {
+        const std::string id = "p" + std::to_string(s);
+        CHECK(a.cards.hand(id) == b.cards.hand(id));  // 同 seed 逐张一致
+        if (a.cards.hand(id) != c.cards.hand(id))
+            differs = true;
+    }
+    CHECK(differs);  // 不同 seed 必须洗出不同结果
 }
 
 TEST_CASE("game: play_game ends when one player kills the other")
