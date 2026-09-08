@@ -20,16 +20,8 @@
 
 namespace tkw
 {
-    /** @brief 卡牌所在区域（事件用；Limbo = 不在任何区域/正在转移）。 */
-    enum class Zone : std::uint8_t
-    {
-        Draw,
-        Discard,
-        Hand,
-        Equip,
-        Judge,
-        Limbo,
-    };
+    /** @brief 卡牌区域（card 域定义，game 域沿用短名）。 */
+    using Zone = card::Zone;
 
     DEFINE_EVENT_START(Card, Event)
     DEFINE_EVENT_END(Card)

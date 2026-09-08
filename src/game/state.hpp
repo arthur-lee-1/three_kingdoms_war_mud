@@ -101,31 +101,11 @@ namespace tkw
             const std::string &instance_id, card::Card &out,
             Zone *from_zone = nullptr)
         {
-            auto h = ctx.cards->remove_from_hand(entity_id, instance_id);
-            if (h.is_some())
-            {
-                out = std::move(h).unwrap();
-                if (from_zone)
-                    *from_zone = Zone::Hand;
-                return true;
-            }
-            auto e = ctx.cards->remove_from_equip(entity_id, instance_id);
-            if (e.is_some())
-            {
-                out = std::move(e).unwrap();
-                if (from_zone)
-                    *from_zone = Zone::Equip;
-                return true;
-            }
-            auto j = ctx.cards->remove_from_judge(entity_id, instance_id);
-            if (j.is_some())
-            {
-                out = std::move(j).unwrap();
-                if (from_zone)
-                    *from_zone = Zone::Judge;
-                return true;
-            }
-            return false;
+            auto c = ctx.cards->remove_from_any(entity_id, instance_id, from_zone);
+            if (c.is_none())
+                return false;
+            out = std::move(c).unwrap();
+            return true;
         }
 
         /**

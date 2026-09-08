@@ -38,6 +38,17 @@ namespace tkw
             Equipment, /**< 装备牌 */
         };
 
+        /** @brief 卡牌所在区域（Limbo = 不在任何区域/正在转移）。 */
+        enum class Zone : std::uint8_t
+        {
+            Draw,
+            Discard,
+            Hand,
+            Equip,
+            Judge,
+            Limbo,
+        };
+
         /**
          * @brief 主动效果类别（封闭枚举，与 JSON 的 effect.kind 一一对应）。
          * @note 只承载「打出的牌怎么结算」；装备被动见 Ability，延时判定见
